@@ -32,6 +32,9 @@ SEASON_D = 113
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MID = 15.2 + 30.42*np.arange(12)            # mid-month day of year
 CLIM_COLS = ['tsoil_C', 'wsat', 'p_mm', 'et_mm']
+# Fallow surface saturation cap (David, 31 Oct 2026): ERA5-Land wsat is unmanaged grid-cell moisture; paddy fallows are
+# drained, so runs pass --wsatmax and the w_fallow clustering feature uses the capped values.
+WSATMAX = 0.6
 
 def opt(name, default):
     return next((a.split('=', 1)[1] for a in sys.argv if a.startswith(f'--{name}=')), default)
@@ -72,7 +75,7 @@ def climate_features(plant, M):
     return pd.DataFrame({
         't_season': window_mean(M['tsoil_C'], plant, SEASON_D),
         't_fallow': window_mean(M['tsoil_C'], fallow0, 365 - SEASON_D),
-        'w_fallow': window_mean(M['wsat'], fallow0, 365 - SEASON_D),
+        'w_fallow': window_mean(np.minimum(M['wsat'], WSATMAX), fallow0, 365 - SEASON_D),
         'q_fallow': window_mean(q, fallow0, 365 - SEASON_D)})
 
 def circ_mean_day(days, w):
@@ -83,7 +86,7 @@ def driver_args(r, clim_path):
     irralk, soilcc = ph_to_soil(r.ph)
     om = OM_REF*float(np.clip(r.soc/SOC_REF, 0.5, 2.0))
     a = (f'--rock={r.rock} --irralk={irralk:.2f} --cec={r.cec:.1f} --temp={r.t_season:.1f} --om={om:.0f} '
-         f'--fe3={r.fe3:.4f} --nfert={r.nfert:.0f} --plant={r.plant:.0f} --clim={clim_path}')
+         f'--fe3={r.fe3:.4f} --nfert={r.nfert:.0f} --plant={r.plant:.0f} --wsatmax={WSATMAX} --clim={clim_path}')
     if soilcc > 0: a += f' --soilcc={soilcc:.3f}'
     return a
 
