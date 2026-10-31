@@ -30,10 +30,21 @@ if [ -n "${BASE_OUT:-}" ]; then
   exit 0
 fi
 # 3-yr drained spin-up (--fallow; args passed exactly as in the GMD runs)
+# The initial adsorption/CEC equilibration can fail for a narrow, non-monotonic set of irrigation alkalinities (SCEPTER
+# then stops with dt=0 but exits 0): such a spin-up is retried with --irralk scaled by NUDGE factors, and the args that
+# worked are kept in <status>.args so the settle and dose chains (and resumes) use the same soil.
+AF="${ST%.txt}.args"; [ -s "$AF" ] && args=$(cat "$AF")
 if ! ok gs22_$a; then
-  python3 paddy/run_flooded_column.py gs22_$a fe2o2,amo2o 3 --fallow --basalt=0 $SOIL $P21 $args > "${ST%.txt}_spin.log" 2>&1
-  rc=$?; [ -f $SCEPTER_OUT/paddy/flood_gs22_$a/run_complete.txt ] || rc=97   # SCEPTER can stop early yet exit 0
-  echo "gs22_$a rc $rc" >> "$ST"; ok gs22_$a || exit 1
+  base=$args
+  for f in ${NUDGE:-1 0.95 1.05 0.9 1.1}; do
+    args=$(python3 -c "import re,sys; s=sys.argv[1]; print(re.sub(r'--irralk=([0-9.]+)', lambda m: '--irralk=%.3f' % (float(m.group(1))*$f), s))" "$base")
+    rm -rf $SCEPTER_OUT/paddy/flood_gs22_$a
+    python3 paddy/run_flooded_column.py gs22_$a fe2o2,amo2o 3 --fallow --basalt=0 $SOIL $P21 $args > "${ST%.txt}_spin.log" 2>&1
+    rc=$?; [ -f $SCEPTER_OUT/paddy/flood_gs22_$a/run_complete.txt ] || rc=97   # SCEPTER can stop early yet exit 0
+    echo "gs22_$a rc $rc (irralk x$f)" >> "$ST"; [ $rc = 0 ] && break
+  done
+  ok gs22_$a || exit 1
+  echo "$args" > "$AF"
   paddy/prune_run.sh spin $SCEPTER_OUT/paddy/flood_gs22_$a
 fi
 paddy/multiyear/run_chain.sh st22_$a 7 0 gs22_$a "$ST" $PROD $P21 $args || exit 1
