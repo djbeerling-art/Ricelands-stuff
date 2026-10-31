@@ -7,6 +7,8 @@
 #   sbatch --cpus-per-task=$P --array=1-$(( (n+P-1)/P )) stanage_handoff/slurm/arch_pack.sbatch CSV
 # Overrides (DOSES, YEARS, STATUS_DIR, SCEPTER_OUT) only via --export=ALL,... as for arch_array.sbatch.
 # Results are identical to arch_array.sbatch (same run_arch_v22.sh per archetype; resumes if resubmitted).
+# Future cases: add BASE_OUT=<baseline SCEPTER_OUT> (and optionally RESETTLE=3) to --export to start from the baseline's
+# settled soil instead of the full spin-up + settle (see run_arch_v22.sh).
 # Per-archetype stdout/stderr go to $STATUS_DIR/<arch>.log; the task log lists each archetype's exit code.
 #SBATCH --job-name=rice23p
 #SBATCH --cpus-per-task=12
