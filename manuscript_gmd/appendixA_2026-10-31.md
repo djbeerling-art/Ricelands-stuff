@@ -130,7 +130,7 @@ with *J* in mol m⁻² yr⁻¹ and *k*~fw~ = 36.5 m yr⁻¹ (0.1 m d⁻¹). When
 | Saturation profile | *S*~w~(*z*) = min[1, *S*~top~ + (1 − *S*~top~) *z*/*z*~wt~] |
 | Continuous flooding | days 0–99: *S*~top~ = 1 |
 | Pre-harvest drain (`--phd=14`) | days 99–113: *S*~top~ = 0.6, *z*~wt~ = 0.15 m |
-| Intermittent flooding (`--awd`) | flooded days 0–29, then cycles of 7.3 d drained (*S*~top~ 0.6, *z*~wt~ 0.15 m) and 14.6 d reflooded until the pre-harvest drain; 1.1 d ramps |
+| AWD schedule (`--awd`) | managed AWD; also applied to rainfed archetypes as a prescribed intermittent-flooding regime (below). Flooded days 0–29, then cycles of 7.3 d drained (*S*~top~ 0.6, *z*~wt~ 0.15 m) and 14.6 d reflooded until the pre-harvest drain; 1.1 d ramps |
 | Fallow | days 113–365 (0.69 yr): *S*~top~ = 0.5, *z*~wt~ = 0.5 m, plants off |
 | Tillage | the top 0.2 m is mixed before each season (`TILL=0.2`) |
 | Irrigation and infiltrating water | Ca 0.5, Mg 0.2, Na 0.3, K 0.05, Si 0.2, SO~4~ 0.2, Cl 1.15 mM, NO~3~ 10⁻³ mM; alkalinity 0.2 meq L⁻¹, pH ≈ 7.6 |
