@@ -91,7 +91,8 @@
 # --clim=<csv> monthly climate forcing (one archetype or cell: 12 rows, header with month,tsoil_C and optionally wsat,
 #   p_mm,et_mm or q_m_yr): soil temperature follows the monthly values in season and fallow alike (piecewise linear
 #   between mid-month points, periodic over the year; floored at --tclimmin, default 1 C, for frozen soil). In fallow and spin-up (--fallow) runs, wsat (volumetric water /
-#   porosity) also sets the surface saturation (in place of --fsat, clipped to --wsatmin..1, default 0.2) and the water
+#   porosity) also sets the surface saturation (in place of --fsat, clipped to --wsatmin..--wsatmax, defaults 0.2 and 1;
+#   ERA5-Land wsat is unmanaged grid-cell moisture, so a cap such as --wsatmax=0.6 keeps a drained paddy fallow drained) and the water
 #   flux q follows max(P - ET, --qmin) (m/yr, default 0.05) or q_m_yr. Flooded and AWD seasons keep their water schedule
 #   and --q (managed water). Fallow runs with --clim switch SCEPTER's seasonal forcing on (T_temp/q_temp/Wet_temp.in);
 #   the water table (--fzw) is unchanged. Without --clim nothing changes.
@@ -175,8 +176,8 @@ if 'clim' in opt:
     clim = {'T': periodic([max(float(r['tsoil_C']), tmin) for r in rows])}
     if fallow:
         if 'wsat' in rows[0]:
-            wmin = float(opt.get('wsatmin', 0.2))
-            clim['W'] = periodic([min(max(float(r['wsat']), wmin), 1.0) for r in rows])
+            wmin = float(opt.get('wsatmin', 0.2)); wmax = float(opt.get('wsatmax', 1.0))
+            clim['W'] = periodic([min(max(float(r['wsat']), wmin), wmax) for r in rows])
         qmin = float(opt.get('qmin', 0.05))
         if 'q_m_yr' in rows[0]:
             clim['q'] = periodic([max(float(r['q_m_yr']), qmin) for r in rows])
