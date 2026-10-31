@@ -33,10 +33,24 @@ s, p = int(sys.argv[2]), int(sys.argv[3])
 for r in rows[s:s+p]:
     print(r['arch'] + '|' + r['args'] + (' --awd' if r['regime'] == 'rf' else ''))
 PY
+# SCEPTER's initial adsorption/CEC solve fails for a narrow, non-monotonic set of irrigation alkalinities, at spin-up or
+# at a later restart (status rc 97/98). An archetype that fails that way is moved aside to $SCEPTER_OUT/failed/ and rerun
+# from scratch with --irralk scaled by the next factor in ARCH_NUDGE; the factor used is in <status>.args and the log.
 run_one() {
     IFS='|' read a args <<< "$1"
-    bash stanage_handoff/run_arch_v22.sh $a "$args" "$DOSES" $YEARS $STATUS_DIR/$a.txt > $STATUS_DIR/$a.log 2>&1
-    echo "$a rc=$? $(date +%T)"
+    local ST=$STATUS_DIR/$a.txt rc
+    for f in ${ARCH_NUDGE:-1 0.95 1.05 0.9 1.1}; do
+        if [ -s "${ST%.txt}.args" ] && ! grep -q "irralk x$f)" "$ST" 2>/dev/null; then continue; fi   # resume: skip used factors
+        NUDGE=$f bash stanage_handoff/run_arch_v22.sh $a "$args" "$DOSES" $YEARS $ST >> $STATUS_DIR/$a.log 2>&1
+        rc=$?
+        [ $rc = 0 ] && break
+        grep -q " rc 9[78]" "$ST" 2>/dev/null || break       # not the numerical failure (e.g. time limit): resume later
+        d=$SCEPTER_OUT/failed/${a}_x$f; mkdir -p $d
+        mv $SCEPTER_OUT/paddy/flood_*_${a}_* $SCEPTER_OUT/paddy/flood_gs22_$a $SCEPTER_OUT/paddy/flood_bs22_$a $d/ 2>/dev/null
+        mv "$ST" "${ST%.txt}.args" "${ST%.txt}_spin.log" $d/ 2>/dev/null
+        echo "$a failed at irralk x$f, retrying" >> $STATUS_DIR/$a.log
+    done
+    echo "$a rc=$rc $(date +%T)"
 }
 export -f run_one
 echo "task $SLURM_ARRAY_TASK_ID on $(hostname): $(wc -l < $LIST) archetypes, $P cores, start $(date +%T)"
