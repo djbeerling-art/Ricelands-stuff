@@ -87,6 +87,12 @@ restart states (run_chain.sh already prunes).
    sensitivity; one rice season per year (multiple cropping not counted); GLiM raster domain is a lower bound;
    22 Mha uses a rock analysis > 250 km away.
 
+7. N fertiliser: every run so far uses a uniform 120 kg N/ha/season (urea; `--nfert=120` hard-coded in
+   `paddy/multiyear/run_chain.sh` before the user options; the driver keeps the last value, so a per-archetype `--nfert=` in args
+   overrides it with no code change). Option: area-weighted per-archetype N rate from a gridded rice-specific map
+   (e.g. EarthStat/Mueller et al. 2012 5-arcmin crop N rates, or Adalibieke et al. 2023 crop-specific N 1961-2020),
+   added as a cells.csv column before archetyping. Affects N2O directly and CH4 weakly. Recommend: adopt it.
+
 ## 6. Suggested first steps in the new thread
 1. On Stanage: clone the repo, run `slurm/build.sh` (confirm module names), and run one archetype for 1 year at
    dose 0 and 20 to check the build reproduces the cloud numbers (the GMD irr061 archetype: `rf/irr` args in
