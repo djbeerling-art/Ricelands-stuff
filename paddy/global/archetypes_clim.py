@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from archetypes import ph_to_soil, OM_REF, SOC_REF, FE3_REF, CLAY_REF
 
 SEASON_D = 113
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MID = 15.2 + 30.42*np.arange(12)            # mid-month day of year
 CLIM_COLS = ['tsoil_C', 'wsat', 'p_mm', 'et_mm']
 
@@ -92,8 +93,11 @@ def write_clim(cmap, cells_idx, M, outdir, case):
     for aid, g in cmap.groupby('arch'):
         i = pos.loc[g.cell].values; w = g.area.values
         df = pd.DataFrame({'month': np.arange(1, 13), **{c: np.average(M[c][i], axis=0, weights=w) for c in CLIM_COLS}})
+        df['et_mm'] = df.et_mm.clip(lower=0)      # ERA5 dew months
         p = os.path.abspath(os.path.join(d, f'{aid}.csv'))
-        df.round(4).to_csv(p, index=False); paths[aid] = p; mon[aid] = df
+        df.round(4).to_csv(p, index=False); mon[aid] = df
+        # inside the repository: path relative to the repo root (jobs run from there, on any machine)
+        paths[aid] = os.path.relpath(p, REPO) if p.startswith(REPO + os.sep) else p
     return paths, mon
 
 def build(cells, cal, forc, outdir, n, nmax):
