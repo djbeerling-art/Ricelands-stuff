@@ -7,7 +7,8 @@ Each future case (gcm x ssp x period) is baseline + CMIP6 change from the same G
                        months where the GCM historical value is below 0.1 mm/day use the additive change)
   swvl1    = baseline * ratio of mrsos (clipped 0.5-2), and wsat = swvl1 / theta_sat clipped to 0-1
 
-Usage: python3 combine_forcing.py <era5land_clim_cells.csv> <tsl_delta_cells.nc> <water_clim_cells.nc> <out.parquet>
+Usage: python3 combine_forcing.py <era5land_clim_cells.csv> <tsl_delta_cells.nc> <water_clim_cells.nc> <out.parquet | outdir/>
+An out path ending in '/' writes one <gcm>_<ssp>_<period>.parquet per case into that directory (low memory).
 """
 import sys
 import numpy as np, pandas as pd, xarray as xr
@@ -22,7 +23,17 @@ def main(basef, tslf, waterf, outf):
     t = xr.open_dataset(tslf, engine='h5netcdf').dtsl.sel(cell=cells)
     w = xr.open_dataset(waterf, engine='h5netcdf').sel(cell=cells)
     days = np.array([31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
+    COLS = ['cell', 'month', 'gcm', 'ssp', 'period', 'tsoil_C', 'wsat', 'p_mm', 'et_mm', 'ro_mm', 'swvl1', 'theta_sat']
+    split = outf.endswith('/')
+    def tidy(df):
+        df = df[COLS].copy()
+        for c in COLS[5:]: df[c] = df[c].astype('float32')
+        for c in ('gcm', 'ssp', 'period'): df[c] = df[c].astype('category')
+        return df
     out = [b.assign(gcm='ERA5-Land', ssp='historical', period='1995-2014')]
+    if split:
+        import os; os.makedirs(outf, exist_ok=True)
+        tidy(out[0]).to_parquet(f'{outf}ERA5-Land_historical_1995-2014.parquet', index=False, compression='zstd'); out = []
     for g in w.gcm.values:
         for s in w.ssp.values:
             for p in w.period.values:
@@ -44,8 +55,12 @@ def main(basef, tslf, waterf, outf):
                 r['swvl1'] = sw.ravel()
                 r['theta_sat'] = np.repeat(B['theta_sat'][:, 0], 12)
                 r['wsat'] = np.clip(sw / B['theta_sat'], 0, 1).ravel()
-                out.append(pd.DataFrame(r).assign(gcm=g, ssp=s, period=p))
+                df = pd.DataFrame(r).assign(gcm=g, ssp=s, period=p)
+                if split: tidy(df).to_parquet(f'{outf}{g}_{s}_{p}.parquet', index=False, compression='zstd')
+                else: out.append(df)
                 print(g, s, p, 'mean dT %.2f' % np.nanmean(r['tsoil_C'] - B['tsoil_C'].ravel()), flush=True)
+    if split:
+        print('wrote', outf); return
     df = pd.concat(out, ignore_index=True)
     cols = ['cell', 'month', 'gcm', 'ssp', 'period', 'tsoil_C', 'wsat', 'p_mm', 'et_mm', 'ro_mm', 'swvl1', 'theta_sat']
     df = df[cols]
