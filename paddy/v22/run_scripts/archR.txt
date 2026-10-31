@@ -1,0 +1,7 @@
+ref|
+rf189|--awd --rock=glb09 --irralk=6.8 --cec=17.5 --temp=29.8 --om=533 --fe3=0.0125
+irr061|--rock=glb04 --irralk=1.6 --cec=16.9 --temp=28.7 --om=506 --fe3=0.0112
+irr043|--rock=glb03 --irralk=0.69 --cec=21.6 --temp=28.5 --om=871 --fe3=0.0147
+rf184|--awd --rock=glb09 --irralk=10 --soilcc=0.005 --cec=33.5 --temp=31.6 --om=338 --fe3=0.0156
+irr092|--rock=glb09 --irralk=0.85 --cec=20.0 --temp=21.8 --om=880 --fe3=0.0124
+rf151|--awd --rock=glb03 --irralk=0.27 --cec=17.3 --temp=25.8 --om=900 --fe3=0.0133
