@@ -54,10 +54,10 @@ All reference reactions in Tables A1 and A2 balance in every element and in char
 |---|---|---|---|---|
 | urea hydrolysis | CO(NH~2~)~2~ + H~2~O → 2 NH~3~ + CO~2~ | −1 urea, +2 NH~3~, +1 CO~2~ | first order, a few days | SCEPTER default |
 | `amo2o` nitrification | NH~4~⁺ + 2 O~2~ → NO~3~⁻ + 2 H⁺ + H~2~O | −1 NH~3~, −2 O~2~, +1 NO~3~ | v M([NH~4~⁺], 1.4 × 10⁻⁴ M) M([O~2~], 2.41 × 10⁻⁵ M) *g*~pH~ | v = 30 yr⁻¹ |
-| `g2n21` denitrification to N~2~O | CH~2~O + NO~3~⁻ + H⁺ → CO~2~ + ½ N~2~O + 3/2 H~2~O | −1 g2, −1 NO~3~, +½ N~2~O, +1 CO~2~ | *r* v M(g2) M([NO~3~⁻], 1.13 × 10⁻⁴ M) *f*~O2~ *g*~pH~ | v = 300 yr⁻¹ |
+| `g2n21` denitrification to N~2~O | CH~2~O + NO~3~⁻ + H⁺ → CO~2~ + ½ N~2~O + 3/2 H~2~O | −1 g2, −1 NO~3~, +½ N~2~O, +1 CO~2~ | *r* v M(g2) M([NO~3~⁻], 1.13 × 10⁻⁴ M) *f*~O2~ *f*~sat~ *g*~pH~ | v = 300 yr⁻¹ |
 | `g2n0` denitrification to N~2~ | CH~2~O + 4/5 NO~3~⁻ + 4/5 H⁺ → CO~2~ + 2/5 N~2~ + 7/5 H~2~O | −1 g2, −4/5 NO~3~, +1 CO~2~ (N~2~ not tracked; it leaves the system) | 1.25 (1 − *r*) × the `g2n21` rate without *r* | |
 | N~2~O yield *r* | | | $r = 0.1 + 0.9/\left[1 + 10^{\,\mathrm{pH}-6.2}\right]$ | Šimek and Cooper (2002); Liu et al. (2010); Russenes et al. (2016) |
-| `g2n2p` N~2~O reduction | CH~2~O + 2 N~2~O → CO~2~ + 2 N~2~ + H~2~O | −1 g2, −2 N~2~O, +1 CO~2~ (N~2~ not tracked) | v M(g2) M([N~2~O], 5 × 10⁻⁶ M) I([NO~3~⁻], 10⁻³ M) *f*~O2~ / [1 + ([H⁺]/10^−5.5^)²] | v = 300 yr⁻¹; pH~50~ 5.5 |
+| `g2n2p` N~2~O reduction | CH~2~O + 2 N~2~O → CO~2~ + 2 N~2~ + H~2~O | −1 g2, −2 N~2~O, +1 CO~2~ (N~2~ not tracked) | v M(g2) M([N~2~O], 5 × 10⁻⁶ M) I([NO~3~⁻], 10⁻³ M) *f*~O2~ *f*~sat~ / [1 + ([H⁺]/10^−5.5^)²] | v = 300 yr⁻¹; pH~50~ 5.5 |
 | `nh4up` rice N uptake | NH~4~⁺ removed | −1 NH~3~ | *F* M([NH~4~⁺], 5 × 10⁻⁵ M) *f*~sat~ × root profile | *F* = 3.5 mol N m⁻² yr⁻¹ |
 
 Urea is applied at 120 kg N ha⁻¹ per season, spread evenly over the 113-day season and placed in the plough layer. Mineralisation releases NH~3~ at N:C = 0.03 mol mol⁻¹ of OM decomposed (`--n2c=0.03`). NH~3~ volatilisation is not represented.
