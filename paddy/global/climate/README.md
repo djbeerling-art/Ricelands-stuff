@@ -13,7 +13,7 @@ baseline and each CMIP6 case. The Stanage thread turns it into T_temp.in etc. vi
 | CMIP6 water climatologies (mrsos, pr, evspsbl, mrro), hist 1995-2014 and futures | done | `cmip6_water/water_clim_cells.nc`, `cmip6_water/grid_water_<GCM>.nc` |
 | WorldClim 2.1 5' tmin/tmax/prec at cells (1970-2000 + CMIP6) | done | `worldclim_cells.parquet` |
 | ERA5-Land 1995-2014 baseline (stl1/2, swvl1/2, tp, e, ro, t2m) | done (run on Stanage) | `era5land_clim_cells.csv.gz` |
-| Final table, 27.5M rows (baseline + 20 CMIP6 cases) | done | `forcing_cells.parquet` (660 MB) |
+| Final table, 27.5M rows (baseline + 20 CMIP6 cases) | done | `forcing_cells/<gcm>_<ssp>_<period>.parquet` (21 files, ~35 MB each; `pd.read_parquet("forcing_cells/")` reads all) |
 
 ## Rice-cell means (unweighted, all months)
 Baseline: tsoil 22.0 C, wsat 0.68, p 121 mm/month, et 75, ro 48. SSP5-8.5 2061-2080: tsoil +2.6 (GFDL) to
