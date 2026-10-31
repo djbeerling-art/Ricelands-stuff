@@ -16,7 +16,8 @@
 #   and driver args with --plant, --nfert and --clim=<that file> added (--temp = season-mean soil T, for reference).
 # The 113-d season length is kept for every archetype (David, 31 Oct 2026); GGCMI sets only the planting day.
 # Usage
-#   python3 archetypes_clim.py <cells.csv> <cal.csv> <forcing> <outdir> [--n=600] [--nmax=300]
+#   python3 archetypes_clim.py <cells.csv> <cal.csv> <forcing> <outdir> [--n=600] [--nmax=300] [--exclude=COL,ECU]
+#       (--exclude drops cells of those ISO3 countries before clustering)
 #       -> outdir/archetypes.csv, outdir/cell_map.csv, outdir/clim/baseline/*.csv
 #   python3 archetypes_clim.py --case <outdir> <forcing_cells.parquet> <gcm> <ssp> <period>
 #       -> outdir/clim/<gcm>_<ssp>_<period>/*.csv and outdir/archetypes_<gcm>_<ssp>_<period>.csv (same archetypes
@@ -169,7 +170,12 @@ if __name__ == '__main__':
     cells_f, cal_f, forc_f, out = x
     n = int(opt('n', 600)); nmax = float(opt('nmax', 300))
     os.makedirs(out, exist_ok=True)
-    a, m = build(pd.read_csv(cells_f), pd.read_csv(cal_f), read_forcing(forc_f), out, n, nmax)
+    cells = pd.read_csv(cells_f); ex = [e for e in opt('exclude', '').split(',') if e]
+    if ex:
+        drop = cells.iso3.isin(ex)
+        print(f'excluding {drop.sum()} cells in {ex} ({(cells.area_irr + cells.area_rf)[drop].sum() / 1e6:.2f} Mha)')
+        cells = cells[~drop]
+    a, m = build(cells, pd.read_csv(cal_f), read_forcing(forc_f), out, n, nmax)
     a.to_csv(os.path.join(out, 'archetypes.csv'), index=False); m.to_csv(os.path.join(out, 'cell_map.csv'), index=False)
     w = a.area
     print(f'{m.cell.nunique()} cells -> {len(a)} archetypes ({(a.regime == "irr").sum()} irrigated, '
