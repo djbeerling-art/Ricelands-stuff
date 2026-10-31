@@ -16,7 +16,7 @@ This appendix lists every process added to SCEPTER for flooded rice soils, with 
 | Reaction rates *R* | mol m⁻³ bulk yr⁻¹ | per mol of reaction extent |
 | Plant and root fluxes | mol m⁻² yr⁻¹ | distributed over the root profile (Sect. A5) |
 
-φ is porosity, *S*~w~ water saturation and *K*~H~ Henry's constant (mol L⁻¹ atm⁻¹). For the reactions that consume organic matter (OM), one mol of extent is one mol of CH~2~O consumed, so v~max~ is a rate of OM loss. The following modifiers recur:
+φ is porosity, *S*~w~ water saturation and *K*~H~ Henry's constant (mol L⁻¹ atm⁻¹). For the reactions that consume organic matter (OM), one mol of extent is one mol of CH~2~O consumed, so v~max~ is a maximum rate of OM loss in mol CH~2~O m⁻³ yr⁻¹ (the Monod and inhibition factors are dimensionless). Plant transport and ebullition constants are first-order, in yr⁻¹. The following modifiers recur:
 
 $$\mathrm{M}(X,K)=\frac{X}{X+K},\qquad \mathrm{I}(X,K_i)=\frac{K_i}{X+K_i},\qquad f_{\mathrm{sat}}=\min(2S_\mathrm{w},1).$$
 
@@ -30,12 +30,12 @@ SCEPTER has no redox equilibrium: every electron transfer in Tables A1 and A2 is
 
 | Reaction | Reference reaction (balanced) | Species advanced by the model (per mol extent) | Rate law (mol m⁻³ yr⁻¹) | Parameters |
 |---|---|---|---|---|
-| `g2o2` aerobic respiration | CH~2~O + O~2~ → CO~2~ + H~2~O | −1 g2, −1 O~2~, +1 CO~2~ | v M(g2) M([O~2~], 5 × 10⁻⁶ M) | v = 300 yr⁻¹ |
-| `g2fe3` ferrihydrite reduction | CH~2~O + 4 Fe(OH)~3~ + 8 H⁺ → CO~2~ + 4 Fe²⁺ + 11 H~2~O | −1 g2, −4 amfe3, +4 Fe(II), +1 CO~2~ | v M(g2) M(Fe~pool~, 100) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 300 yr⁻¹ (code default 200) |
+| `g2o2` aerobic respiration | CH~2~O + O~2~ → CO~2~ + H~2~O | −1 g2, −1 O~2~, +1 CO~2~ | v M(g2) M([O~2~], 5 × 10⁻⁶ M) | v = 300 mol m⁻³ yr⁻¹ |
+| `g2fe3` ferrihydrite reduction | CH~2~O + 4 Fe(OH)~3~ + 8 H⁺ → CO~2~ + 4 Fe²⁺ + 11 H~2~O | −1 g2, −4 amfe3, +4 Fe(II), +1 CO~2~ | v M(g2) M(Fe~pool~, 100) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 300 mol m⁻³ yr⁻¹ (code default 200) |
 | `g2gr` green-rust reduction | CH~2~O + 2 Fe~3~(OH)~8~ + 12 H⁺ → CO~2~ + 6 Fe²⁺ + 15 H~2~O | −1 g2, −2 gr, +6 Fe(II), +1 CO~2~ | shares the `g2fe3` rate through Fe~pool~ | *f*~gr~ = 1.0 |
-| `g2gt` goethite reduction | CH~2~O + 4 FeOOH + 8 H⁺ → CO~2~ + 4 Fe²⁺ + 7 H~2~O | −1 g2, −4 gt, +4 Fe(II), +1 CO~2~ | v M(g2) M(gt, 100) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 10 yr⁻¹ (Roden and Zachara, 1996) |
-| `g2so4` sulfate reduction | CH~2~O + ½ SO~4~²⁻ + ½ H⁺ → CO~2~ + ½ HS⁻ + H~2~O | −1 g2, −½ SO~4~, +½ HS, +1 CO~2~ | v M(g2) M([SO~4~²⁻], 10⁻⁴ M) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 300 yr⁻¹ (code default 100) |
-| `g2ch4` methanogenesis | CH~2~O → ½ CH~4~ + ½ CO~2~ | −1 g2, +½ CH~4~, +½ CO~2~ | v M(g2) I(Fe~pool~, 30) I([SO~4~²⁻], 10⁻⁴ M) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 1860 yr⁻¹ (calibrated); *K*~i,Fe~ = 30 mol m⁻³ |
+| `g2gt` goethite reduction | CH~2~O + 4 FeOOH + 8 H⁺ → CO~2~ + 4 Fe²⁺ + 7 H~2~O | −1 g2, −4 gt, +4 Fe(II), +1 CO~2~ | v M(g2) M(gt, 100) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 10 mol m⁻³ yr⁻¹ (Roden and Zachara, 1996) |
+| `g2so4` sulfate reduction | CH~2~O + ½ SO~4~²⁻ + ½ H⁺ → CO~2~ + ½ HS⁻ + H~2~O | −1 g2, −½ SO~4~, +½ HS, +1 CO~2~ | v M(g2) M([SO~4~²⁻], 10⁻⁴ M) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 300 mol m⁻³ yr⁻¹ (code default 100) |
+| `g2ch4` methanogenesis | CH~2~O → ½ CH~4~ + ½ CO~2~ | −1 g2, +½ CH~4~, +½ CO~2~ | v M(g2) I(Fe~pool~, 30) I([SO~4~²⁻], 10⁻⁴ M) *f*~O2~ *f*~NO3~ *f*~sat~ | v = 1860 mol m⁻³ yr⁻¹ (calibrated); *K*~i,Fe~ = 30 mol m⁻³ |
 | `ch4o2` methanotrophy | CH~4~ + 2 O~2~ → CO~2~ + 2 H~2~O | −1 CH~4~, −2 O~2~, +1 CO~2~ | v M([CH~4~], 5 × 10⁻⁶ M) M([O~2~], 2 × 10⁻⁵ M) | v = 500 mol m⁻³ yr⁻¹ |
 | `fe2o2` Fe(II) oxygenation | Fe²⁺ + ¼ O~2~ + H⁺ → Fe³⁺ + ½ H~2~O | −1 Fe(II), −¼ O~2~, +1 Fe(III)~aq~ | (*k*~SS~ [OH⁻]² + *k*~0~) [Fe(II)] *p*O~2~, on dissolved and exchangeable Fe(II) | *k*~SS~ = 8 × 10¹³ M⁻² min⁻¹ atm⁻¹; *k*~0~ = 10⁻⁷ min⁻¹ atm⁻¹ (Stumm and Lee, 1961; Singer and Stumm, 1970) |
 | `fe2gr` green-rust formation and dissolution | Fe²⁺ + 2 Fe(OH)~3~ + 2 H~2~O → Fe~3~(OH)~8~ + 2 H⁺ | −1 Fe(II), −2 amfe3, +1 gr | k *f*~sat~ ln Ω; Ω = 10^−9.98^ [Fe²⁺]/[H⁺]²; × M(amfe3, 1) when forming, × M(gr, 1) when dissolving | k = 10⁴ mol m⁻³ yr⁻¹; log K −9.98 (Bourrié et al., 1999) |
@@ -53,11 +53,11 @@ All reference reactions in Tables A1 and A2 balance in every element and in char
 | Reaction | Reference reaction (balanced) | Species advanced by the model (per mol extent) | Rate law (mol m⁻³ yr⁻¹) | Parameters |
 |---|---|---|---|---|
 | urea hydrolysis | CO(NH~2~)~2~ + H~2~O → 2 NH~3~ + CO~2~ | −1 urea, +2 NH~3~, +1 CO~2~ | first order, a few days | SCEPTER default |
-| `amo2o` nitrification | NH~4~⁺ + 2 O~2~ → NO~3~⁻ + 2 H⁺ + H~2~O | −1 NH~3~, −2 O~2~, +1 NO~3~ | v M([NH~4~⁺], 1.4 × 10⁻⁴ M) M([O~2~], 2.41 × 10⁻⁵ M) *g*~pH~ | v = 30 yr⁻¹ |
-| `g2n21` denitrification to N~2~O | CH~2~O + NO~3~⁻ + H⁺ → CO~2~ + ½ N~2~O + 3/2 H~2~O | −1 g2, −1 NO~3~, +½ N~2~O, +1 CO~2~ | *r* v M(g2) M([NO~3~⁻], 1.13 × 10⁻⁴ M) *f*~O2~ *f*~sat~ *g*~pH~ | v = 300 yr⁻¹ |
+| `amo2o` nitrification | NH~4~⁺ + 2 O~2~ → NO~3~⁻ + 2 H⁺ + H~2~O | −1 NH~3~, −2 O~2~, +1 NO~3~ | v M([NH~4~⁺], 1.4 × 10⁻⁴ M) M([O~2~], 2.41 × 10⁻⁵ M) *g*~pH~ | v = 30 mol m⁻³ yr⁻¹ |
+| `g2n21` denitrification to N~2~O | CH~2~O + NO~3~⁻ + H⁺ → CO~2~ + ½ N~2~O + 3/2 H~2~O | −1 g2, −1 NO~3~, +½ N~2~O, +1 CO~2~ | *r* v M(g2) M([NO~3~⁻], 1.13 × 10⁻⁴ M) *f*~O2~ *f*~sat~ *g*~pH~ | v = 300 mol m⁻³ yr⁻¹ |
 | `g2n0` denitrification to N~2~ | CH~2~O + 4/5 NO~3~⁻ + 4/5 H⁺ → CO~2~ + 2/5 N~2~ + 7/5 H~2~O | −1 g2, −4/5 NO~3~, +1 CO~2~ (N~2~ not tracked; it leaves the system) | 1.25 (1 − *r*) × the `g2n21` rate without *r* | |
 | N~2~O yield *r* | | | $r = 0.1 + 0.9/\left[1 + 10^{\,\mathrm{pH}-6.2}\right]$ | Šimek and Cooper (2002); Liu et al. (2010); Russenes et al. (2016) |
-| `g2n2p` N~2~O reduction | CH~2~O + 2 N~2~O → CO~2~ + 2 N~2~ + H~2~O | −1 g2, −2 N~2~O, +1 CO~2~ (N~2~ not tracked) | v M(g2) M([N~2~O], 5 × 10⁻⁶ M) I([NO~3~⁻], 10⁻³ M) *f*~O2~ *f*~sat~ / [1 + ([H⁺]/10^−5.5^)²] | v = 300 yr⁻¹; pH~50~ 5.5 |
+| `g2n2p` N~2~O reduction | CH~2~O + 2 N~2~O → CO~2~ + 2 N~2~ + H~2~O | −1 g2, −2 N~2~O, +1 CO~2~ (N~2~ not tracked) | v M(g2) M([N~2~O], 5 × 10⁻⁶ M) I([NO~3~⁻], 10⁻³ M) *f*~O2~ *f*~sat~ / [1 + ([H⁺]/10^−5.5^)²] | v = 300 mol m⁻³ yr⁻¹; pH~50~ 5.5 |
 | `nh4up` rice N uptake | NH~4~⁺ removed | −1 NH~3~ | *F* M([NH~4~⁺], 5 × 10⁻⁵ M) *f*~sat~ × root profile | *F* = 3.5 mol N m⁻² yr⁻¹ |
 
 Urea is applied at 120 kg N ha⁻¹ per season, spread evenly over the 113-day season and placed in the plough layer. Mineralisation releases NH~3~ at N:C = 0.03 mol mol⁻¹ of OM decomposed (`--n2c=0.03`). NH~3~ volatilisation is not represented.
@@ -164,10 +164,10 @@ The Si feedback in particular is an empirical sensitivity parameterisation, not 
 
 | Constant | Value | Target |
 |---|---|---|
-| `g2ch4` v~max~ | 1860 yr⁻¹ | IPCC (2019) flooded-rice emission factor, 1.19 kg CH~4~ ha⁻¹ d⁻¹, on the settled reference cycle |
+| `g2ch4` v~max~ | 1860 mol m⁻³ yr⁻¹ | IPCC (2019) flooded-rice emission factor, 1.19 kg CH~4~ ha⁻¹ d⁻¹, on the settled reference cycle |
 | `ch4pl` *k*~pl~ | 1100 yr⁻¹ | plant-mediated share of emission ~80–90 % |
 | `ch4eb` *k* | 1000 yr⁻¹ | no post-harvest venting pulse; fallow CH~4~ ~10 % of the season |
-| `g2n2p` v~max~, pH~50~ | 300 yr⁻¹, 5.5 | season N~2~O ~0.3–0.4 kg N~2~O-N ha⁻¹ with 120 kg N (Akiyama et al., 2005) |
+| `g2n2p` v~max~, pH~50~ | 300 mol m⁻³ yr⁻¹, 5.5 | season N~2~O ~0.3–0.4 kg N~2~O-N ha⁻¹ with 120 kg N (Akiyama et al., 2005) |
 | O~2~ inhibition *K*~i~ | 2.5 × 10⁻⁷ M | fallow N~2~O ~1 kg N ha⁻¹ yr⁻¹ |
 | *P*~ox~ parameters | 0.3, 0.9, 6, 1 | rhizosphere oxidation 0.4–0.9 (literature range) |
 | `rtco2` | 60 mol C m⁻² yr⁻¹ | pore-water *p*CO~2~ 0.1–0.3 atm, HCO~3~⁻ ~10–15 mM |
