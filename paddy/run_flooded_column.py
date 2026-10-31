@@ -90,7 +90,7 @@
 #   must nucleate from a 1e-20 seed, so porewater Al builds up and stalls plagioclase dissolution for weeks.
 # --clim=<csv> monthly climate forcing (one archetype or cell: 12 rows, header with month,tsoil_C and optionally wsat,
 #   p_mm,et_mm or q_m_yr): soil temperature follows the monthly values in season and fallow alike (piecewise linear
-#   between mid-month points, periodic over the year). In fallow and spin-up (--fallow) runs, wsat (volumetric water /
+#   between mid-month points, periodic over the year; floored at --tclimmin, default 1 C, for frozen soil). In fallow and spin-up (--fallow) runs, wsat (volumetric water /
 #   porosity) also sets the surface saturation (in place of --fsat, clipped to --wsatmin..1, default 0.2) and the water
 #   flux q follows max(P - ET, --qmin) (m/yr, default 0.05) or q_m_yr. Flooded and AWD seasons keep their water schedule
 #   and --q (managed water). Fallow runs with --clim switch SCEPTER's seasonal forcing on (T_temp/q_temp/Wet_temp.in);
@@ -171,7 +171,8 @@ if 'clim' in opt:
         v0 = va + (vb - va) * (1 - ta) / (1 - ta + tb) if tb > 0 else vb
         if tb > 0: pts = [(0.0, v0)] + pts
         return [[round(t, 6) for t, _ in pts], [round(v, 6) for _, v in pts]]
-    clim = {'T': periodic([float(r['tsoil_C']) for r in rows])}
+    tmin = float(opt.get('tclimmin', 1.0))   # frozen soil: hold at tmin (aqueous chemistry is not valid below 0 C)
+    clim = {'T': periodic([max(float(r['tsoil_C']), tmin) for r in rows])}
     if fallow:
         if 'wsat' in rows[0]:
             wmin = float(opt.get('wsatmin', 0.2))
