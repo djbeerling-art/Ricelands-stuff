@@ -2110,6 +2110,8 @@ stgas_dext_all(findloc(chrrxn_ext_all,'groxy',dim=1), findloc(chrgas_all,'po2',d
 stsld_dext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrsld_all,'sid',dim=1)) = 1d0
 stgas_dext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrgas_all,'po2',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'rtoxy',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0 ! Si feedback (rtsi.in)
+staq_dext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0 ! Si root barrier (ch4si.in)
+if (any(chrrxn_ext_all=='ch4rx')) staq_dext_all(findloc(chrrxn_ext_all,'ch4rx',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'siup ',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 ! paddy N2O reduction 
 stsld_dext_all(findloc(chrrxn_ext_all,'g2n2p',dim=1), findloc(chrsld_all,'g2',dim=1)) = 1d0
@@ -10772,6 +10774,52 @@ endif
 f_si = 1d0 - w + w*six/(six + ksi)/href
 df_si = w*ksi/(six + ksi)**2d0/href
 endsubroutine rtsi_f
+!**************************************************************************************************************************************
+subroutine ch4si_f(nz,six,f_c,df_c,f_r,df_r)
+! alternative Si feedback through the root apoplastic barrier (Si-enhanced suberin/lignin in the exodermis, Fleck et al.
+! 2011; Colmer 2003): the barrier resistance scales as b = 1 - w + w*h(si)/h(siref), h = si/(si + ksi), so plant CH4
+! conductance (ch4pl, ch4rx) is x f_c = 1/b_c and radial O2 loss (rtoxy) is x f_r = 1/b_r. Both are 1 at si = siref.
+! Parameters ksi siref wc wr from ./ch4si.in (a header line, then the four values), read once; without the file f = 1
+implicit none
+integer,intent(in)::nz
+real(kind=8),dimension(nz),intent(in)::six
+real(kind=8),dimension(nz),intent(out)::f_c,df_c,f_r,df_r
+real(kind=8),save::ksi = 1d0,wc = 0d0,wr = 0d0,href = 1d0
+logical,save::read_done = .false.,on = .false.
+logical::exist_file
+integer::ios
+real(kind=8)::siref
+real(kind=8),dimension(nz)::r,dr
+if (.not. read_done) then 
+    read_done = .true.
+    inquire(file='./ch4si.in',exist=exist_file)
+    if (exist_file) then 
+        open(987,file='./ch4si.in',status='old',action='read')
+        read(987,'()')
+        read(987,*,iostat=ios) ksi,siref,wc,wr
+        close(987)
+        if (ios == 0) then 
+            on = .true.
+            href = siref/(siref + ksi)
+            print *,'root barrier Si response ksi, siref, wc, wr: ',ksi,siref,wc,wr
+        endif 
+    endif 
+endif 
+if (.not. on) then 
+    f_c = 1d0
+    df_c = 0d0
+    f_r = 1d0
+    df_r = 0d0
+    return
+endif 
+r = six/(six + ksi)/href
+dr = ksi/(six + ksi)**2d0/href
+! resistance floored at 0.1 (negative w, a barrier weakened by Si, would otherwise reach zero at very high Si)
+f_c = 1d0/max(1d0 - wc + wc*r,0.1d0)
+df_c = merge(-wc*dr*f_c**2d0,0d0,1d0 - wc + wc*r > 0.1d0)
+f_r = 1d0/max(1d0 - wr + wr*r,0.1d0)
+df_r = merge(-wr*dr*f_r**2d0,0d0,1d0 - wr + wr*r > 0.1d0)
+endsubroutine ch4si_f
 !**************************************************************************************************************************************
 subroutine read_n2c(n2c_g1,n2c_g2,n2c_g3)
 ! N:C (mol/mol) of NH3 released when OM pools g1, g2, g3 decompose (net mineralisation); ./n2c.in (a header line, then
@@ -22018,7 +22066,7 @@ real(kind=8),dimension(nz):: po2x,vmax,mo2,fe2x,koxa,vmax2,mom2,komb,beta,omx,om
     & ,mo2g1,mo2g2,mo2g3,kg1,kg2,kg3,g1x,g2x,g3x,pyx,fe3x,koxpy,pnh3x,nh4x,dnh4_dpro,dnh4_dpnh3 &
     & ,no3x,pn2ox,dv_dph_tmp,fe2f,dfe2f_dfe2,dfe2f_dpco2,dfe2f_dpro,dfe2f_dso4f,pco2x,hrpy,oxax &
     & ,vmax_tmp,z_dum,amfe3x,so4x,pch4x,f_g2,f_ea,f_o2,f_no3,f_so4,f_fe3,f_sat,grx,fe2fr,lnomg,f_gr,gtx,fe2adx,sfr,sad &
-    & ,fesx,hsfr,f_ph,df_ph,six,f_si,df_si
+    & ,fesx,hsfr,f_ph,df_ph,six,f_si,df_si,f_cb,df_cb,f_rb,df_rb
 #ifdef cache_spec
 real(kind=8),dimension(:),allocatable,save::profte,dprofte_dpro,dprofte_dios,profti,dprofti_dpro,dprofti_dios
 #else
@@ -23502,12 +23550,13 @@ select case(trim(adjustl(rxn_name)))
         ! radial O2 loss from rice roots: O2 source with the rtco2 root profile; column total krxn1 (mol O2 m-2 yr-1)
         six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
         call rtsi_f(nz,six,f_si,df_si) ! Si feedback on root O2 loss (1 unless ./rtsi.in)
+        call ch4si_f(nz,six,f_cb,df_cb,f_rb,df_rb) ! Si root barrier (1 unless ./ch4si.in)
         vmax = krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),:)/krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),1)
         rxn_ext = krxn1_ext_all(findloc(chrrxn_ext_all,'rtoxy',dim=1),1)*vmax &
-            & /krxn2_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),1)*min(2d0*sat,1d0)*f_si
+            & /krxn2_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),1)*min(2d0*sat,1d0)*f_si*f_rb
         select case(trim(adjustl(sp_name)))
             case('si')
-                drxnext_dmsp = rxn_ext/f_si*df_si
+                drxnext_dmsp = rxn_ext/f_si*df_si + rxn_ext/f_rb*df_rb
             case default
                 drxnext_dmsp = 0d0
         endselect
@@ -23525,11 +23574,15 @@ select case(trim(adjustl(rxn_name)))
         ! constant following root density (set in the main program); rhizosphere oxidation fraction via stoichiometry 
         kch4 = keqgas_h(findloc(chrgas_all,'pch4',dim=1),ieqgas_h0)
         vmax = krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),:) ! yr^-1 
-        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)
+        six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
+        call ch4si_f(nz,six,f_cb,df_cb,f_rb,df_rb) ! Si root barrier on plant conductance (1 unless ./ch4si.in)
+        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_cb
         
         select case(trim(adjustl(sp_name)))
             case('pch4')
-                drxnext_dmsp = vmax*poro*sat*1d3*kch4
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*f_cb
+            case('si')
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*df_cb
             case default
                 drxnext_dmsp = 0d0
         endselect 
@@ -23546,13 +23599,17 @@ select case(trim(adjustl(rxn_name)))
         kch4 = keqgas_h(findloc(chrgas_all,'pch4',dim=1),ieqgas_h0)
         vmax = krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),:) ! yr^-1 
         call pox_f(nz,prox,f_ph,df_ph)
-        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_ph
+        six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
+        call ch4si_f(nz,six,f_cb,df_cb,f_rb,df_rb) ! Si root barrier on plant conductance (1 unless ./ch4si.in)
+        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_ph*f_cb
         
         select case(trim(adjustl(sp_name)))
             case('pch4')
-                drxnext_dmsp = vmax*poro*sat*1d3*kch4*f_ph
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*f_ph*f_cb
+            case('si')
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_ph*df_cb
             case('pro')
-                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*df_ph
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*df_ph*f_cb
             case default
                 drxnext_dmsp = 0d0
         endselect 

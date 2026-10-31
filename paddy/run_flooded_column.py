@@ -54,6 +54,8 @@
 #   without it ch4pl's stoichiometry keeps the fixed Pox 0.5 and ghg_budget.py counts half of ch4pl as emitted.
 # --rtsi=<ksi>:<siref>:<w> makes root O2 loss (rtoxy) depend on dissolved Si (mol/L): x 1 - w + w*h(si)/h(siref),
 #   h = si/(si + ksi) (rtsi.in); e.g. 5e-4:2.7e-4:0.5 (Si-fed rice has higher root oxidising activity).
+# --ch4si=<ksi>:<siref>:<wc>:<wr> alternative Si feedback via the root apoplastic barrier: barrier resistance
+#   b = 1 - w + w*h(si)/h(siref); plant CH4 transport (ch4pl, ch4rx) x 1/b(wc), root O2 loss (rtoxy) x 1/b(wr) (ch4si.in).
 # --n2c=<mol N/mol C> NH3 released per OM C decomposed (n2c.in; default 0.1, ~0.03 for straw/root inputs).
 # --o2inh=<mol/L> O2 inhibition constant of all anaerobic pathways (o2inh.in; default 2.52e-5).
 # --n2oy=pH50:n:rmin  pH-dependent N2O yield of denitrification (n2oy.in): a fraction rmin + (1-rmin)/(1+10^(n(pH-pH50)))
@@ -201,6 +203,9 @@ if os.path.exists(os.path.join(rundir,'n2c.in')): os.remove(os.path.join(rundir,
 if 'n2c' in opt:
     with open(os.path.join(rundir,'n2c.in'),'w') as f: f.write('n2c\n%s\n' % opt['n2c'])
 if os.path.exists(os.path.join(rundir,'rtsi.in')): os.remove(os.path.join(rundir,'rtsi.in'))
+if os.path.exists(os.path.join(rundir,'ch4si.in')): os.remove(os.path.join(rundir,'ch4si.in'))
+if 'ch4si' in opt:
+    with open(os.path.join(rundir,'ch4si.in'),'w') as f: f.write('ksi siref wc wr\n%s\n' % opt['ch4si'].replace(':',' '))
 if 'rtsi' in opt:
     with open(os.path.join(rundir,'rtsi.in'),'w') as f: f.write('ksi siref w\n%s\n' % opt['rtsi'].replace(':',' '))
 if os.path.exists(os.path.join(rundir,'pox.in')): os.remove(os.path.join(rundir,'pox.in'))
