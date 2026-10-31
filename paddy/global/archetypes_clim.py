@@ -8,7 +8,8 @@
 #                  gcm=ERA5-Land are used for clustering)
 # Clustering: within each (regime, rock) group, area-weighted k-means on standardised
 #   soil   ph, cec, soc, fe3 (clay proxy as in archetypes.py), nfert (capped at --nmax, default 300)
-#   timing sin and cos of the planting day (so day 360 and day 5 are neighbours)
+#   timing sin and cos of the season start day (so day 360 and day 5 are neighbours); the season start is the
+#          GGCMI sowing day + max(growing season length - 113, 0), so the 113-d flooded season ends at maturity
 #   climate mean soil T over the 113-d season from planting, mean soil T, wetness (wsat) and P-ET over the fallow
 # Archetype values are area-weighted means of member cells (planting day as a circular mean). Each archetype gets
 #   <outdir>/clim/<case>/<arch>.csv  (month, tsoil_C, wsat, p_mm, et_mm: area-weighted monthly means of its cells)
@@ -101,7 +102,7 @@ def write_clim(cmap, cells_idx, M, outdir, case):
     return paths, mon
 
 def build(cells, cal, forc, outdir, n, nmax):
-    c = cells.merge(cal[['cell', 'plant_irr', 'plant_rf', 'nfert']], on='cell', how='left')
+    c = cells.merge(cal[['cell', 'plant_irr', 'plant_rf', 'gsl_irr', 'gsl_rf', 'nfert']], on='cell', how='left')
     c['nfert'] = c.nfert.fillna(120).clip(upper=nmax)
     if 'fe3' not in c:
         c['fe3'] = np.clip(FE3_REF*c.clay/CLAY_REF, 0.004, 0.03) if 'clay' in c else FE3_REF
@@ -117,7 +118,11 @@ def build(cells, cal, forc, outdir, n, nmax):
     rows = []
     for regime, col in (('irr', 'area_irr'), ('rf', 'area_rf')):
         g = c[c[col] > 0].copy(); g['area'] = g[col]; g['regime'] = regime
-        g['plant'] = g[f'plant_{regime}'].fillna(150).values
+        # GGCMI planting_day is the sowing date (nursery included in growing_season_length): the 113-d flooded
+        # season is placed so that it ends at maturity, i.e. starts at sowing + max(gsl - 113, 0) (~transplanting)
+        sow = g[f'plant_{regime}'].fillna(150).values
+        gsl = g[f'gsl_{regime}'].fillna(SEASON_D).values
+        g['plant'] = (sow + np.maximum(gsl - SEASON_D, 0)) % 365
         idx = pos.loc[g.cell].values
         g = pd.concat([g.reset_index(drop=True),
                        climate_features(g.plant.values, {k: v[idx] for k, v in M.items()})], axis=1)
