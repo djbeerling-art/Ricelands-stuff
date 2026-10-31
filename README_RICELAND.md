@@ -33,7 +33,7 @@ paddy/multiyear/run_chain.sh ref_20 1 20 s20 status.txt $PROD $P21 & wait       
 python3 paddy/ghg_budget.py $SCEPTER_OUT/paddy/flood_ref_0_y1s $SCEPTER_OUT/paddy/flood_ref_20_y1s
 ```
 
-Expected year-1 season result: CH₄ about 130 kg ha⁻¹ (control) and 73 kg ha⁻¹ (20 t ha⁻¹), with a net change of about −2.1 t CO₂e ha⁻¹.
+Expected year-1 season result (v23, checked by running these commands as written): CH₄ about 131 kg ha⁻¹ (control) and 73 kg ha⁻¹ (20 t ha⁻¹), with a net change of about −2.1 t CO₂e ha⁻¹.
 
 ## Versions
 

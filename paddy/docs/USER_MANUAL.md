@@ -267,16 +267,16 @@ python3 paddy/v22/annual22.py $SCEPTER_OUT/paddy ref_0 ref_20 st_ref_y7f
 
 `ghg_budget.py` gives season totals. `annual22.py` gives yearly CH₄ production, oxidation and emission, Fe(III) reduction, plough-layer Fe(III) and cation fluxes for a chain against its control.
 
-Expected year-1 season values for the reference site (frozen v22, 25 °C, continuous flooding with a 14-day pre-harvest drain, 120 kg urea-N ha⁻¹):
+Expected year-1 season values for the reference site (v23, from running the quick start in Sect. 3 verbatim on 31 Oct 2026; v22 differs by < 2 %; 25 °C, continuous flooding with a 14-day pre-harvest drain, 120 kg urea-N ha⁻¹):
 
 | Quantity | Control | 20 t ha⁻¹ basalt |
 |---|---|---|
-| CH₄ emission (kg ha⁻¹) | 130 | 73 |
+| CH₄ emission (kg ha⁻¹) | 131 | 73 |
 | N₂O emission (kg N ha⁻¹) | 0.32 | 0.29 |
 | Carbonate alkalinity export (t CO₂ ha⁻¹) | 0.31 | 0.30 |
-| Calcite (t CO₂ ha⁻¹) | 0.02 | 0.57 |
+| Calcite (t CO₂ ha⁻¹) | −0.01 | 0.57 |
 | Cation release (t CO₂ ha⁻¹, potential) | 0 | 4.1 |
-| Net change, season only (t CO₂e ha⁻¹) | — | −2.08 (realised), −5.64 (potential) |
+| Net change, season only (t CO₂e ha⁻¹) | — | −2.12 (realised), −5.65 (potential) |
 
 Your numbers should agree to within about 1 % with v22. v23 differs from v22 by less than 0.3 % for CH₄ and N₂O and up to 1 % for CO₂ degassing. Over 10 years (season + fallow) the reference-site net change is about −50 t CO₂e ha⁻¹ at 20 t ha⁻¹ yr⁻¹, and control CH₄ rises from 130 to about 214 kg ha⁻¹.
 
