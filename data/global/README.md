@@ -39,3 +39,16 @@ clay 21.0/26.9/30.7/35.2/41.7 %.
   python3 paddy/global/rock_recipes.py rocks <georoc tile csvs> --cells=<domain cells> --n=12
   python3 paddy/global/prep_cells.py <data dir> cells.csv --glim=glim_vb.csv --rocks=rocks.csv
   python3 paddy/global/archetypes.py cells.csv arch --n=200
+
+## 150 km full-resolution GLiM domain (2026-10-31, David's choice)
+- `cells_all_dist.csv`: per rice cell, km to the nearest 5-arcmin point of the full-resolution GLiM vector (LiMW_GIS 2015.gdb,
+  Hamburg; rasterised all_touched by glim_basalt.py): `dist_vb_full` (basic volcanics), `dist_vbvi_full` (+ intermediate).
+  `glim_vb_full.csv`, `glim_vi_full.csv`: those points.
+- `cells150.csv` (make_domain.py): cells with dist_vb_full <= 150 km, Colombia/Ecuador excluded: 148,807 cells, 95.8 Mha.
+  dist_basalt = dist_vb_full. Cells already in cells.csv keep their rock recipe; the 50,926 new cells take the nearest
+  analysis in `rocks_georoc2026_nearestrecipe.csv` (GEOROC 2026 'Rock Types' basalts, each assigned to the nearest of the
+  existing glb00-11 recipes in normative space; the original sample table was not kept and this only reproduces the
+  original recipe for 32% of the old domain's area).
+- `cells_all_cal.csv`: cal_nfert.py for all 265,876 rice cells. `era5land_clim_cells_all.csv.gz`: ERA5-Land 1995-2014
+  monthly climatology for all rice cells (era5land_baseline.py on Stanage).
+- Archetypes: stanage_handoff/arch_150 (602; baseline + 20 CMIP6 cases; fallow wsat capped at 0.6).

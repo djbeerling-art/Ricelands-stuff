@@ -5,6 +5,11 @@
 # Usage (repository root):
 #   python3 paddy/global/collect_chains.py <run dir = $SCEPTER_OUT/paddy> <archetypes.csv> <cell_map.csv> <cells.csv> <outdir>
 #       [--doses=10,20] [--years=10] [--tag=g22] [--alk=gross|pda (default pda)]
+#       [--tort=1.3] [--tslope=0.218] [--tconst=5.92]
+# Transport penalty (David, 31 Oct 2026: report gross and net of transport): per cell, Lefebvre et al. 2019 (J Clean Prod
+#   233, 468; Table 4, truck): (tconst + tslope * tort * d) kg CO2e per t rock, d = the cell's straight-line distance (km)
+#   to the nearest basalt (cells.csv dist_basalt), road = tort x straight line; rock = dose x years t/ha.
+#   'trans' = that penalty (t CO2e/ha); 'net_tr' = net + trans (net of transport; 'net' stays gross of transport).
 # Writes <outdir>/arch_years.csv (per archetype, dose, year), arch_cum.csv (cumulative), cell_cum.csv, nation_cum.csv.
 # Per-ha values are t CO2e/ha (cumulative over the chain); totals multiply by harvested rice area (one season per year).
 import sys, os
@@ -50,8 +55,13 @@ pd.DataFrame(yrs).to_csv(os.path.join(OUT, 'arch_years.csv'), index=False)
 ag = pd.DataFrame(cum); ag.to_csv(os.path.join(OUT, 'arch_cum.csv'), index=False)
 if ag.empty: sys.exit('no complete archetypes')
 
-V = ['ch4s', 'ch4f', 'n2o', 'alk', 'cc', 'cat', 'ret', 'net', 'net_pot']
+V = ['ch4s', 'ch4f', 'n2o', 'alk', 'cc', 'cat', 'ret', 'net', 'net_pot', 'trans', 'net_tr']
 cm = pd.read_csv(CMAP).merge(ag, on='arch')
+dist = pd.read_csv(CELLS, usecols=['cell', 'dist_basalt'])
+cm = cm.merge(dist, on='cell', how='left')
+tort, tsl, tc = (float(opt.get(k, v)) for k, v in (('tort', 1.3), ('tslope', 0.218), ('tconst', 5.92)))
+cm['trans'] = cm.dose*cm.years*(tc + tsl*tort*cm.dist_basalt.fillna(0))/1e3
+cm['net_tr'] = cm.net + cm.trans
 for v in V: cm[v+'_t'] = cm[v]*cm.area                # t CO2e/ha x ha = t CO2e over the chain
 cell = cm.groupby(['cell', 'dose'])[[v+'_t' for v in V]+['area']].sum().reset_index()
 cell = cell.merge(pd.read_csv(CELLS, usecols=['cell', 'lon', 'lat', 'iso3']), on='cell')
