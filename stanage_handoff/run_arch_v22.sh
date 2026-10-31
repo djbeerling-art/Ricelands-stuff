@@ -31,8 +31,9 @@ if [ -n "${BASE_OUT:-}" ]; then
 fi
 # 3-yr drained spin-up (--fallow; args passed exactly as in the GMD runs)
 if ! ok gs22_$a; then
-  python3 paddy/run_flooded_column.py gs22_$a fe2o2,amo2o 3 --fallow --basalt=0 $SOIL $P21 $args > /dev/null 2>&1
-  echo "gs22_$a rc $?" >> "$ST"; ok gs22_$a || exit 1
+  python3 paddy/run_flooded_column.py gs22_$a fe2o2,amo2o 3 --fallow --basalt=0 $SOIL $P21 $args > "${ST%.txt}_spin.log" 2>&1
+  rc=$?; [ -f $SCEPTER_OUT/paddy/flood_gs22_$a/run_complete.txt ] || rc=97   # SCEPTER can stop early yet exit 0
+  echo "gs22_$a rc $rc" >> "$ST"; ok gs22_$a || exit 1
   paddy/prune_run.sh spin $SCEPTER_OUT/paddy/flood_gs22_$a
 fi
 paddy/multiyear/run_chain.sh st22_$a 7 0 gs22_$a "$ST" $PROD $P21 $args || exit 1
