@@ -23,3 +23,15 @@ g2ch4 3.53 -> 3.97 mol C/m2, g2fe3 1.79 -> 1.85.
 With basalt, O2 consumption by reduced Fe rises (green-rust oxidation 0.03 -> 0.35, Fe2+ oxidation 0.85 -> 1.02 mol O2/m2),
 so root-zone O2 falls and O2 inhibition of anaerobic decomposition weakens. Green rust accounts for about a third of the rise.
 Caveat: without O2 inhibition the OM pool is largely consumed, so that run is substrate-limited.
+
+## O2-inhibition Ki sensitivity (runFe25c.sh; reference, 20 t/ha vs control, one season, constants not recalibrated)
+
+| Ki (M) | Control production (kg CH4/ha) | Production change | Emission change |
+|---|---|---|---|
+| 2.5e-7 (standard) | 283 | +12.5 % | -9.2 % |
+| 1e-6 | 478 | +5.1 % | -8.4 % |
+| 5e-6 | 577 | +1.9 % | -9.4 % |
+| off | 684 | -0.2 % | -10.1 % |
+
+Weaker inhibition shrinks the basalt production rise but never turns it into the decrease seen in root-free experiments;
+emission change stays ~-9 %. With Ki >= 1e-6 the control OM pool declines (not steady), so g2ch4 would need recalibrating.
