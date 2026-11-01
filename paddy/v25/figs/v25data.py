@@ -20,7 +20,7 @@ def years(st,site,dose):
     return out
 def totals(st,site,dose):
     Y=years(st,site,dose); t={k:sum(r[k] for r in Y) for k in ('ch4s','ch4f','n2o','pda','alk','cc','cat')}
-    t['cc']=min(t['cc'],max(t['cat']-t['pda'],0)); t['ret']=t['cat']-t['pda']-t['cc']      # cumulative calcite cap
+    t['cc']=min(t['cc'],max(t['cat']-t['pda'],0)/2); t['ret']=t['cat']-t['pda']-2*t['cc']   # cumulative cap: 1 mol CaCO3 per 2 eq; ret in eq
     t['ghg']=t['ch4s']+t['ch4f']+t['n2o']; t['net']=t['ghg']-t['pda']-t['cc']; t['netpot']=t['ghg']-t['cat']
     t['pct1']=Y[0]['pct']; t['pct10']=Y[-1]['pct']; return t
 if __name__=='__main__':
