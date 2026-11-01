@@ -18,6 +18,10 @@
 # --kfw=<m/yr> sets the floodwater gas transfer velocity between the flooded surface layer and the atmosphere
 #   (written to floodwater.in; default 36.5 m/yr = 0.1 m/d, limited by the diffusive boundary layer at the soil
 #   surface); --kfw=0 restores SCEPTER's closed top boundary for dissolved gases.
+# --kaq=<m/yr> floodwater solute discharge (v25): while flooded, the top cell exchanges solutes with floodwater that
+#   is renewed by irrigation water and discharged laterally at this mean rate (floodwater_aq.in; in series with
+#   diffusion across the upper half of the top cell). Lateral export = the top-boundary 'dif' flux in flx_aq.
+#   E.g. 100 mm per season over ~0.27 yr flooded -> --kaq=0.37. Absent/0 = closed top (as before v25).
 # --fallow runs the column drained (surface saturation 0.5, water table at 0.5 m), e.g. to spin up the soil OM
 #   (--fsat=<surface saturation> and --fzw=<water table depth, m> change both)
 #   and Fe(III) stocks before a rice season; --rstrt=<tag> starts from the end state of run flood_<tag>.
@@ -221,6 +225,8 @@ if 'grlogk' in opt:
     with open(os.path.join(rundir,'grlogk.in'),'w') as f: f.write('log K\n%s\n' % opt['grlogk'])
 with open(os.path.join(rundir,'floodwater.in'),'w') as f:
     f.write('transfer velocity [m/yr]\n%s\n' % opt.get('kfw','36.5'))
+if 'kaq' in opt:
+    with open(os.path.join(rundir,'floodwater_aq.in'),'w') as f: f.write('floodwater solute discharge rate [m/yr]\n%s\n' % opt['kaq'])
 
 # --psd=<file>: rock dust PSD (psdrain.in, e.g. data/psdrain_renforth_p80-100um.in from paddy/make_psd_renforth.py),
 # tracked for the rock minerals only; soil and secondary solids keep the single radius --prad

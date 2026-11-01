@@ -29842,9 +29842,33 @@ integer i_c,i_p,i_n ! 1 -- iz, 2 -- iz + 1, 3 -- iz - 1
 data i_c,i_p,i_n/1,2,3/
 
 logical ghost_node
+! paddy floodwater solute exchange (v25): while the surface is flooded, the top cell exchanges solutes with
+! floodwater that is renewed by irrigation water (conc maqi) and discharged laterally (drains, overflow).
+! kaq [m yr-1] = mean floodwater discharge rate over the flooded period, read once from ./floodwater_aq.in
+! (header line, then the value; absent or 0 = closed top as before). It acts in series with diffusion
+! across the upper half of the top cell and is weighted by w = (sat(1)-0.9)/0.1, as for gas exchange.
+! The resulting top-boundary diffusive flux (column dif in flx_aq) is the lateral export.
+real(kind=8),save::kaq = -1d0
+real(kind=8)::wfwa,edifhalf
+logical::exist_fwa,fwa_open,aq_cl
 
 ! ghost_node = .true.
 ghost_node = .false.
+
+if (kaq < 0d0) then 
+    kaq = 0d0
+    inquire(file='./floodwater_aq.in',exist=exist_fwa)
+    if (exist_fwa) then 
+        open(9871,file='./floodwater_aq.in',status='old',action='read')
+        read(9871,'()')
+        read(9871,*) kaq
+        close(9871)
+        print *,'floodwater solute discharge rate [m/yr]: ',kaq
+    endif 
+endif 
+wfwa = min(1d0,max(0d0,(sat(1)-0.9d0)/0.1d0))
+fwa_open = aq_diff_close .and. kaq*wfwa > 0d0
+aq_cl = aq_diff_close .and. .not. fwa_open
 
 faq_dif = 0d0
 dfaqdif_dmaq = 0d0
@@ -29875,6 +29899,10 @@ do ispa=1,nsp_aq
 	
 	edif_p = edif_p/dz_p
 	edif_n = edif_n/dz_n
+	if (fwa_open) then ! floodwater discharge in series with diffusion across the upper half of the top cell
+		edifhalf = 1d3*poro(1)*sat(1)*( tora(1)*daq(ispa) + disp(1) )/(0.5d0*dz(1))
+		edif_n(1) = 1d0/( 1d0/(1d3*kaq*wfwa) + 1d0/edifhalf )
+	endif 
 	
 	
 	caq_tmp = 0d0
@@ -29890,7 +29918,7 @@ do ispa=1,nsp_aq
 	
 	if (ghost_node) caq_tmp_n(1) = 2d0*maqi(ispa) - maqft(ispa,1)
 	
-	if (aq_diff_close) caq_tmp_n(1) = maqft(ispa,1) ! making the flux at the top 0
+	if (aq_cl) caq_tmp_n(1) = maqft(ispa,1) ! making the flux at the top 0
 	
 	! --- first consider only flux coming down 
 	
@@ -29908,7 +29936,7 @@ do ispa=1,nsp_aq
 		dfaqdif_dios(ispa,1,i_c) = dfaqdif_dios(ispa,1,i_c) + edif_n(1)*( dmaqft_dios(ispa,1) )/dz(1)  
 	endif 
 	
-	if (aq_diff_close) then 
+	if (aq_cl) then 
 		! dfaqdif_dpro(ispa,1,i_c) = dfaqdif_dpro(ispa,1,i_c) - edif_n(1)*( dmaqft_dpro(ispa,1) )/dz(1) ! making flux 0 
 		! dfaqdif_dios(ispa,1,i_c) = dfaqdif_dios(ispa,1,i_c) - edif_n(1)*( dmaqft_dios(ispa,1) )/dz(1) ! making flux 0 
 		dfaqdif_dpro(ispa,1,i_c) = 0d0 ! making flux 0 
@@ -29924,7 +29952,7 @@ do ispa=1,nsp_aq
 			dfaqdif_dmaq(ispa,ispa2,1,i_c) = dfaqdif_dmaq(ispa,ispa2,1,i_c) + edif_n(1)*( dmaqft_dmaqf(ispa,ispa2,1) )/dz(1)  
 		endif 
 		
-		if (aq_diff_close) then 
+		if (aq_cl) then 
 			! dfaqdif_dmaq(ispa,ispa2,1,i_c) = dfaqdif_dmaq(ispa,ispa2,1,i_c) - edif_n(1)*( dmaqft_dmaqf(ispa,ispa2,1) )/dz(1) ! making flux 0 
 			dfaqdif_dmaq(ispa,ispa2,1,i_c) = 0d0 ! making flux 0 
 		endif 
@@ -29939,7 +29967,7 @@ do ispa=1,nsp_aq
 			dfaqdif_dmgas(ispa,ispg,1,i_c) = dfaqdif_dmgas(ispa,ispg,1,i_c) + edif_n(1)*( dmaqft_dmgas(ispa,ispg,1) )/dz(1) 
 		endif 
 		
-		if (aq_diff_close) then 
+		if (aq_cl) then 
 			! dfaqdif_dmgas(ispa,ispg,1,i_c) = dfaqdif_dmgas(ispa,ispg,1,i_c) - edif_n(1)*( dmaqft_dmgas(ispa,ispg,1) )/dz(1) ! making flux 0 
 			dfaqdif_dmgas(ispa,ispg,1,i_c) = 0d0 ! making flux 0 
 		endif 
