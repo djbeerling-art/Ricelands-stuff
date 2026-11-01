@@ -785,7 +785,7 @@ integer,parameter::nsp_gas_all = 5
 integer ::nsp_gas_cnst != nsp_gas_all - nsp_gas
 integer ::nsp3 != nsp_sld + nsp_aq + nsp_gas
 integer,intent(in)::nrxn_ext != 1
-integer,parameter::nrxn_ext_all = 35
+integer,parameter::nrxn_ext_all = 36
 integer :: nflx ! = 5 + nrxn_ext + nsp_sld  
 integer,intent(in)::nsld_kinspc_in
 integer :: nsld_kinspc,nsld_kinspc_add
@@ -1159,7 +1159,7 @@ chraq_all  = (/'mg   ','si   ','na   ','ca   ','al   ','fe2  ','fe3  ','so4  ','
 chrgas_all = (/'pco2 ','po2  ','pnh3 ','pn2o ','pch4 '/)
 chrrxn_ext_all = (/'resp ','fe2o2','omomb','ombto','pyfe3','amo2o','g2n0 ','g2n21','g2n22','oxao2' &
     & ,'g2k  ','g2ca ','g2mg ','g2fe3','g2so4','g2ch4','ch4o2','fe2gr','ch4pl','ch4eb','fe2fs','fesox','g2n2p' &
-    & ,'n2opl','g2gr ','g2gt ','fe2sp','rtco2','g2o2 ','nh4up','rtoxy','groxy','siup ','sidox','ch4rx'/)
+    & ,'n2opl','g2gr ','g2gt ','fe2sp','rtco2','g2o2 ','nh4up','rtoxy','groxy','siup ','sidox','ch4rx','fhage'/)
 
 ! define the species and rxns explicitly simulated in the model in a fully coupled way
 ! should be chosen from definable species & rxn lists above 
@@ -1991,6 +1991,9 @@ stsld_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrsld_all,'sid',di
 stsld_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = 1d0
 stgas_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrgas_all,'po2',dim=1)) = -0.25d0
 stgas_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrgas_all,'pco2',dim=1)) = 1d0
+! ageing of ferrihydrite to goethite (Fe(OH)3 -> FeOOH + H2O)
+stsld_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = -1d0
+stsld_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chrsld_all,'gt',dim=1)) = 1d0
 ! CH4 ebullition: dissolved CH4 above a bubble-formation threshold leaves the soil directly 
 stgas_ext_all(findloc(chrrxn_ext_all,'ch4eb',dim=1), findloc(chrgas_all,'pch4',dim=1)) = -1d0
 ! FeS precipitation/dissolution (Fe2+  +  HS-  ->  FeS  +  H+) 
@@ -2108,6 +2111,10 @@ stgas_dext_all(findloc(chrrxn_ext_all,'fesox',dim=1), findloc(chrgas_all,'po2',d
 stsld_dext_all(findloc(chrrxn_ext_all,'groxy',dim=1), findloc(chrsld_all,'gr',dim=1)) = 1d0
 stgas_dext_all(findloc(chrrxn_ext_all,'groxy',dim=1), findloc(chrgas_all,'po2',dim=1)) = 1d0
 stsld_dext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrsld_all,'sid',dim=1)) = 1d0
+! ferrihydrite ageing to goethite, Fe(II)-catalysed and inhibited by dissolved Si
+stsld_dext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = 1d0
+staq_dext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chraq_all,'fe2',dim=1)) = 1d0
+staq_dext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 stgas_dext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrgas_all,'po2',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'rtoxy',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0 ! Si feedback (rtsi.in)
 staq_dext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0 ! Si root barrier (ch4si.in)
@@ -10143,6 +10150,8 @@ krxn1_ext_all(findloc(chrrxn_ext_all,'rtoxy',dim=1),:) = 3.65d0
 ! oxidise in minutes to hours in air, e.g. Genin et al. 1998), so on drainage it is limited by O2 supply
 krxn1_ext_all(findloc(chrrxn_ext_all,'groxy',dim=1),:) = 1d7
 krxn1_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1),:) = 1d5 ! L mol^-1 yr^-1: ~1 d half-life in air-saturated porewater
+krxn1_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),:) = 0d0 ! yr^-1, ferrihydrite ageing rate at saturating Fe2+ and no Si (off by default)
+krxn2_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),:) = 3d-4 ! mol L^-1, dissolved Si giving half inhibition of ageing
 krxn1_ext_all(findloc(chrrxn_ext_all,'amo2o',dim=1),:) = 9.53d-6*60d0*60d0*24d0*365d0 ! nitrification vmax (Maggi et al. 2008), mol m^-3 yr^-1
 krxn1_ext_all(findloc(chrrxn_ext_all,'nh4up',dim=1),:) = 3.5d0 ! maximum crop N uptake, mol N m^-2 yr^-1 (~150 kg N/ha over a 113-d season)
 krxn2_ext_all(findloc(chrrxn_ext_all,'nh4up',dim=1),:) = 5d-5 ! half-saturation for NH4+(aq), mol L-1 (rice high-affinity uptake ~10-50 uM)
@@ -23663,6 +23672,32 @@ select case(trim(adjustl(rxn_name)))
                 drxnext_dmsp = v_tmp*f_sat*f_fe3*(-1d0)/prox
             case('fes')
                 drxnext_dmsp = v_tmp*f_sat*lnomg*km_tmp1/(fesx + km_tmp1)**2d0*merge(0d0,1d0,lnomg > 0d0)
+            case default
+                drxnext_dmsp = 0d0
+        endselect 
+        
+    case('fhage') 
+        ! ageing of ferrihydrite (amfe3) to goethite (gt), catalysed by aqueous Fe2+ (Hansel et al. 2005; Pedersen et al. 2005) 
+        ! and inhibited by dissolved Si (Si sorbed on ferrihydrite blocks transformation; Cornell and Schwertmann 2003; 
+        ! Jones et al. 2009): rate = k amfe3 fe2/(fe2 + K_fe2) K_si/(K_si + si); k = krxn1 (yr-1), K_si = krxn2 (mol L-1), 
+        ! K_fe2 = 1e-4 mol L-1. Goethite is reduced only slowly (g2gt), so ageing removes Fe(III) from the reducible pool.
+        v_tmp = krxn1_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),1) ! yr-1
+        km_tmp1 = krxn2_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),1) ! mol L-1 (Si)
+        km_tmp2 = 1d-4 ! mol L-1 (Fe2+)
+        six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
+        fe2fr = max(maqx_loc(findloc(chraq_all,'fe2',dim=1),:),0d0)
+        f_ea = fe2fr/(fe2fr + km_tmp2)
+        f_g2 = km_tmp1/(max(six,0d0) + km_tmp1)
+        f_sat = min(2d0*sat,1d0)
+        rxn_ext = v_tmp*amfe3x*f_ea*f_g2*f_sat
+        
+        select case(trim(adjustl(sp_name)))
+            case('amfe3')
+                drxnext_dmsp = v_tmp*f_ea*f_g2*f_sat
+            case('fe2')
+                drxnext_dmsp = v_tmp*amfe3x*km_tmp2/(fe2fr + km_tmp2)**2d0*f_g2*f_sat
+            case('si')
+                drxnext_dmsp = v_tmp*amfe3x*f_ea*(-1d0)*km_tmp1/(max(six,0d0) + km_tmp1)**2d0*f_sat
             case default
                 drxnext_dmsp = 0d0
         endselect 
