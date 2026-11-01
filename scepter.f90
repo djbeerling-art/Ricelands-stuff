@@ -23689,15 +23689,15 @@ select case(trim(adjustl(rxn_name)))
         f_ea = fe2fr/(fe2fr + km_tmp2)
         f_g2 = km_tmp1/(max(six,0d0) + km_tmp1)
         f_sat = min(2d0*sat,1d0)
-        rxn_ext = v_tmp*amfe3x*f_ea*f_g2*f_sat
+        rxn_ext = v_tmp*max(amfe3x,0d0)*f_ea*f_g2*f_sat ! no ageing of a (numerically) negative pool
         
         select case(trim(adjustl(sp_name)))
             case('amfe3')
-                drxnext_dmsp = v_tmp*f_ea*f_g2*f_sat
+                drxnext_dmsp = merge(v_tmp*f_ea*f_g2*f_sat,0d0,amfe3x>0d0)
             case('fe2')
-                drxnext_dmsp = v_tmp*amfe3x*km_tmp2/(fe2fr + km_tmp2)**2d0*f_g2*f_sat
+                drxnext_dmsp = v_tmp*max(amfe3x,0d0)*km_tmp2/(fe2fr + km_tmp2)**2d0*f_g2*f_sat
             case('si')
-                drxnext_dmsp = v_tmp*amfe3x*f_ea*(-1d0)*km_tmp1/(max(six,0d0) + km_tmp1)**2d0*f_sat
+                drxnext_dmsp = v_tmp*max(amfe3x,0d0)*f_ea*(-1d0)*km_tmp1/(max(six,0d0) + km_tmp1)**2d0*f_sat
             case default
                 drxnext_dmsp = 0d0
         endselect 

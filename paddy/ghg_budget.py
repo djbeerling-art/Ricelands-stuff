@@ -50,7 +50,17 @@ def season(run):
         if 'fe2' not in warned: warned.add('fe2'); print('WARNING: no flx_aq-fe2.txt (pruned?): potentially durable ALK unknown',file=sys.stderr)
     try: nh4 = integ(run,'gas-pnh3')['adv']
     except (OSError,KeyError): nh4 = 0.
-    o['potentially durable ALK (t CO2/ha)'] = o['ALK export (t CO2/ha)'] - 2*(fe2+nh4)*0.4401
+    # v25 floodwater discharge (--kaq): lateral export = top-boundary 'dif' flux; its alkalinity is the charge balance of
+    # the exported major ions (ALK = cations - strong anions, Fe2+ counted as in SCEPTER's ALK and removed again for PDA)
+    lat = latfe = 0.
+    for sp,z in (('ca',2),('mg',2),('na',1),('k',1),('fe2',2),('so4',-2),('cl',-1),('no3',-1)):
+        try: v = integ(run,'aq-'+sp).get('dif',0.)
+        except OSError: v = 0.
+        lat += z*v
+        if sp == 'fe2': latfe = v
+    o['lateral ALK (t CO2/ha)'] = lat*0.4401
+    o['ALK export (t CO2/ha)'] += lat*0.4401
+    o['potentially durable ALK (t CO2/ha)'] = o['ALK export (t CO2/ha)'] - 2*(fe2+latfe+nh4)*0.4401
     try: o['calcite (t CO2/ha)'] = -integ(run,'sld-cc')['cc']*0.4401   # cc column: dissolution positive
     except OSError: o['calcite (t CO2/ha)'] = 0.
     # rock minerals = those in the run's dust.in (calcite, Fe(III) oxide and inert excluded); their base-cation charge
