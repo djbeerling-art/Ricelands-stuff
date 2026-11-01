@@ -18,7 +18,7 @@
 #   realised  = dCH4*27 + dN2O*273 - dALK export (or d(potentially durable ALK) with --alk=pda) - dcalcite, with dcalcite capped at the basalt's cation release
 #               less dALK export (calcite beyond that is not rock-derived CDR)
 #   potential = dCH4*27 + dN2O*273 - cation release
-import sys,numpy as np
+import sys,os,numpy as np
 
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
 opt  = dict(a[2:].split('=') for a in sys.argv[1:] if a.startswith('--') and '=' in a)
@@ -27,6 +27,18 @@ tend = days/365.
 warned = set()
 
 def integ(run,name):
+    # Prefer SCEPTER's exact running integral (int_flx_*: time-averaged rate since t=0, so total = value x time). The
+    # output-snapshot rates in flx_* are instantaneous and can carry large one-step spikes (seen for calcite, whose
+    # precipitation/redissolution flips within an output interval), so summing them can misstate the season total.
+    fi = f'{run}/flx/int_flx_{name}.txt'
+    if os.path.exists(fi) and not os.environ.get('SNAPSHOT_FLX'):
+        h = open(fi).readline().split()
+        d = np.atleast_2d(np.loadtxt(fi,skiprows=1))
+        if d[-1,0] < tend*0.999 and run not in warned:
+            warned.add(run); print(f'WARNING: {run} ends at {d[-1,0]*365:.1f} d, before the {days:.0f}-d season',file=sys.stderr)
+        k = np.searchsorted(d[:,0], tend*1.0001)   # last row at or before tend (int_flx rows share flx_ output times)
+        row = d[max(k-1,0)]
+        return {h[i]:row[i]*row[0] for i in range(1,len(h))}
     f = f'{run}/flx/flx_{name}.txt'
     h = open(f).readline().split()
     d = np.loadtxt(f,skiprows=1)
