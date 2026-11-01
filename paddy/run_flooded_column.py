@@ -22,9 +22,10 @@
 #   is renewed by irrigation water and discharged laterally at this mean rate (floodwater_aq.in; in series with
 #   diffusion across the upper half of the top cell). Lateral export = the top-boundary 'dif' flux in flx_aq.
 #   E.g. 100 mm per season over ~0.27 yr flooded -> --kaq=0.37. Absent/0 = closed top (as before v25).
-#   Adopted central values (1 Nov 2026; lit: Qi 2020 Sci Rep, Guo 2009, Shao 2014 EJA, Tsubo 2007 Ecol Model, Bouman 2007):
-#   continuous flooding 120 mm/season (~0.27 yr flooded) -> --kaq=0.44; AWD 120 mm (~0.21 yr flooded) -> --kaq=0.58;
-#   rainfed 200 mm (~0.21 yr flooded) -> --kaq=0.96; sensitivity x0.5 / x2 on each. Pots/batch: omit (closed).
+#   Adopted central value (1 Nov 2026): 200 mm/season surface discharge for ALL regimes, sensitivity x0.5-x2 (100-400 mm).
+#   Lit: Qi 2020 Sci Rep 106-195 mm; Sujono 2010 JWARP 318-399 mm; Peng 2012 Irrig Drain 61:285 426 mm; Tsubo 2007 Ecol Model;
+#   Bouman 2007 IRRI. kaq = 0.2 m / flooded years: continuous flooding (~0.27 yr) -> --kaq=0.74; AWD/rainfed (~0.21 yr) -> --kaq=0.96.
+#   Pots/batch: omit (closed).
 # --fallow runs the column drained (surface saturation 0.5, water table at 0.5 m), e.g. to spin up the soil OM
 #   (--fsat=<surface saturation> and --fzw=<water table depth, m> change both)
 #   and Fe(III) stocks before a rice season; --rstrt=<tag> starts from the end state of run flood_<tag>.
