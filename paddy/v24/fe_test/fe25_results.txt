@@ -1,0 +1,15 @@
+fe_ref_0       prod   282.8 ( +0.0%)  emis    92.7 ( +0.0%)  soilox   55.2 rhizox  134.9 g2fe3   7.542
+fe_ref_20      prod   318.0 (+12.5%)  emis    84.2 ( -9.2%)  soilox   56.0 rhizox  177.5 g2fe3   8.587
+fe_ref_20f6    prod   306.8 ( +8.5%)  emis    81.5 (-12.1%)  soilox   55.4 rhizox  169.8 g2fe3   8.729
+fe_ref_20f12   prod   296.4 ( +4.8%)  emis    79.0 (-14.8%)  soilox   54.6 rhizox  162.6 g2fe3   8.853
+fe_ref_20f25   prod   275.9 ( -2.4%)  emis    74.2 (-19.9%)  soilox   53.0 rhizox  148.5 g2fe3   9.069
+fe_gong_0      prod   281.0 ( +0.0%)  emis   112.7 ( +0.0%)  soilox   68.2 rhizox   87.3 g2fe3   7.300
+fe_gong_36     prod   324.1 (+15.4%)  emis   108.9 ( -3.4%)  soilox   71.9 rhizox  125.3 g2fe3   8.617
+fe_gong_36f6   prod   309.2 (+10.1%)  emis   103.6 ( -8.1%)  soilox   69.5 rhizox  118.0 g2fe3   8.841
+fe_gong_36f12  prod   295.9 ( +5.3%)  emis    98.8 (-12.3%)  soilox   67.5 rhizox  112.2 g2fe3   9.020
+fe_slag_0      prod   221.2 ( +0.0%)  emis    66.9 ( +0.0%)  soilox   51.6 rhizox   97.7 g2fe3   6.545
+fe_slag_4      prod   237.3 ( +7.3%)  emis    63.5 ( -5.1%)  soilox   55.8 rhizox  114.6 g2fe3   7.184
+fe_slag_4f15   prod   235.3 ( +6.4%)  emis    64.0 ( -4.4%)  soilox   56.4 rhizox  112.0 g2fe3   7.192
+fe_bat_0       prod   645.6 ( +0.0%)  emis   612.6 ( +0.0%)  soilox   17.4 rhizox    0.0 g2fe3  14.566
+fe_bat_20      prod   653.5 ( +1.2%)  emis   620.9 ( +1.3%)  soilox   17.2 rhizox    0.0 g2fe3  15.437
+fe_bat_20f12   prod   620.9 ( -3.8%)  emis   588.6 ( -3.9%)  soilox   17.0 rhizox    0.0 g2fe3  15.939

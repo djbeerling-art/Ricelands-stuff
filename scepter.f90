@@ -785,7 +785,7 @@ integer,parameter::nsp_gas_all = 5
 integer ::nsp_gas_cnst != nsp_gas_all - nsp_gas
 integer ::nsp3 != nsp_sld + nsp_aq + nsp_gas
 integer,intent(in)::nrxn_ext != 1
-integer,parameter::nrxn_ext_all = 35
+integer,parameter::nrxn_ext_all = 36
 integer :: nflx ! = 5 + nrxn_ext + nsp_sld  
 integer,intent(in)::nsld_kinspc_in
 integer :: nsld_kinspc,nsld_kinspc_add
@@ -1159,7 +1159,7 @@ chraq_all  = (/'mg   ','si   ','na   ','ca   ','al   ','fe2  ','fe3  ','so4  ','
 chrgas_all = (/'pco2 ','po2  ','pnh3 ','pn2o ','pch4 '/)
 chrrxn_ext_all = (/'resp ','fe2o2','omomb','ombto','pyfe3','amo2o','g2n0 ','g2n21','g2n22','oxao2' &
     & ,'g2k  ','g2ca ','g2mg ','g2fe3','g2so4','g2ch4','ch4o2','fe2gr','ch4pl','ch4eb','fe2fs','fesox','g2n2p' &
-    & ,'n2opl','g2gr ','g2gt ','fe2sp','rtco2','g2o2 ','nh4up','rtoxy','groxy','siup ','sidox','ch4rx'/)
+    & ,'n2opl','g2gr ','g2gt ','fe2sp','rtco2','g2o2 ','nh4up','rtoxy','groxy','siup ','sidox','ch4rx','fhage'/)
 
 ! define the species and rxns explicitly simulated in the model in a fully coupled way
 ! should be chosen from definable species & rxn lists above 
@@ -1991,6 +1991,9 @@ stsld_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrsld_all,'sid',di
 stsld_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = 1d0
 stgas_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrgas_all,'po2',dim=1)) = -0.25d0
 stgas_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrgas_all,'pco2',dim=1)) = 1d0
+! ageing of ferrihydrite to goethite (Fe(OH)3 -> FeOOH + H2O)
+stsld_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = -1d0
+stsld_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chrsld_all,'gt',dim=1)) = 1d0
 ! CH4 ebullition: dissolved CH4 above a bubble-formation threshold leaves the soil directly 
 stgas_ext_all(findloc(chrrxn_ext_all,'ch4eb',dim=1), findloc(chrgas_all,'pch4',dim=1)) = -1d0
 ! FeS precipitation/dissolution (Fe2+  +  HS-  ->  FeS  +  H+) 
@@ -2108,8 +2111,14 @@ stgas_dext_all(findloc(chrrxn_ext_all,'fesox',dim=1), findloc(chrgas_all,'po2',d
 stsld_dext_all(findloc(chrrxn_ext_all,'groxy',dim=1), findloc(chrsld_all,'gr',dim=1)) = 1d0
 stgas_dext_all(findloc(chrrxn_ext_all,'groxy',dim=1), findloc(chrgas_all,'po2',dim=1)) = 1d0
 stsld_dext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrsld_all,'sid',dim=1)) = 1d0
+! ferrihydrite ageing to goethite, Fe(II)-catalysed and inhibited by dissolved Si
+stsld_dext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = 1d0
+staq_dext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chraq_all,'fe2',dim=1)) = 1d0
+staq_dext_all(findloc(chrrxn_ext_all,'fhage',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 stgas_dext_all(findloc(chrrxn_ext_all,'sidox',dim=1), findloc(chrgas_all,'po2',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'rtoxy',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0 ! Si feedback (rtsi.in)
+staq_dext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0 ! Si root barrier (ch4si.in)
+if (any(chrrxn_ext_all=='ch4rx')) staq_dext_all(findloc(chrrxn_ext_all,'ch4rx',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'siup ',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 ! paddy N2O reduction 
 stsld_dext_all(findloc(chrrxn_ext_all,'g2n2p',dim=1), findloc(chrsld_all,'g2',dim=1)) = 1d0
@@ -10141,6 +10150,8 @@ krxn1_ext_all(findloc(chrrxn_ext_all,'rtoxy',dim=1),:) = 3.65d0
 ! oxidise in minutes to hours in air, e.g. Genin et al. 1998), so on drainage it is limited by O2 supply
 krxn1_ext_all(findloc(chrrxn_ext_all,'groxy',dim=1),:) = 1d7
 krxn1_ext_all(findloc(chrrxn_ext_all,'sidox',dim=1),:) = 1d5 ! L mol^-1 yr^-1: ~1 d half-life in air-saturated porewater
+krxn1_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),:) = 0d0 ! yr^-1, ferrihydrite ageing rate at saturating Fe2+ and no Si (off by default)
+krxn2_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),:) = 3d-4 ! mol L^-1, dissolved Si giving half inhibition of ageing
 krxn1_ext_all(findloc(chrrxn_ext_all,'amo2o',dim=1),:) = 9.53d-6*60d0*60d0*24d0*365d0 ! nitrification vmax (Maggi et al. 2008), mol m^-3 yr^-1
 krxn1_ext_all(findloc(chrrxn_ext_all,'nh4up',dim=1),:) = 3.5d0 ! maximum crop N uptake, mol N m^-2 yr^-1 (~150 kg N/ha over a 113-d season)
 krxn2_ext_all(findloc(chrrxn_ext_all,'nh4up',dim=1),:) = 5d-5 ! half-saturation for NH4+(aq), mol L-1 (rice high-affinity uptake ~10-50 uM)
@@ -10772,6 +10783,52 @@ endif
 f_si = 1d0 - w + w*six/(six + ksi)/href
 df_si = w*ksi/(six + ksi)**2d0/href
 endsubroutine rtsi_f
+!**************************************************************************************************************************************
+subroutine ch4si_f(nz,six,f_c,df_c,f_r,df_r)
+! alternative Si feedback through the root apoplastic barrier (Si-enhanced suberin/lignin in the exodermis, Fleck et al.
+! 2011; Colmer 2003): the barrier resistance scales as b = 1 - w + w*h(si)/h(siref), h = si/(si + ksi), so plant CH4
+! conductance (ch4pl, ch4rx) is x f_c = 1/b_c and radial O2 loss (rtoxy) is x f_r = 1/b_r. Both are 1 at si = siref.
+! Parameters ksi siref wc wr from ./ch4si.in (a header line, then the four values), read once; without the file f = 1
+implicit none
+integer,intent(in)::nz
+real(kind=8),dimension(nz),intent(in)::six
+real(kind=8),dimension(nz),intent(out)::f_c,df_c,f_r,df_r
+real(kind=8),save::ksi = 1d0,wc = 0d0,wr = 0d0,href = 1d0
+logical,save::read_done = .false.,on = .false.
+logical::exist_file
+integer::ios
+real(kind=8)::siref
+real(kind=8),dimension(nz)::r,dr
+if (.not. read_done) then 
+    read_done = .true.
+    inquire(file='./ch4si.in',exist=exist_file)
+    if (exist_file) then 
+        open(987,file='./ch4si.in',status='old',action='read')
+        read(987,'()')
+        read(987,*,iostat=ios) ksi,siref,wc,wr
+        close(987)
+        if (ios == 0) then 
+            on = .true.
+            href = siref/(siref + ksi)
+            print *,'root barrier Si response ksi, siref, wc, wr: ',ksi,siref,wc,wr
+        endif 
+    endif 
+endif 
+if (.not. on) then 
+    f_c = 1d0
+    df_c = 0d0
+    f_r = 1d0
+    df_r = 0d0
+    return
+endif 
+r = six/(six + ksi)/href
+dr = ksi/(six + ksi)**2d0/href
+! resistance floored at 0.1 (negative w, a barrier weakened by Si, would otherwise reach zero at very high Si)
+f_c = 1d0/max(1d0 - wc + wc*r,0.1d0)
+df_c = merge(-wc*dr*f_c**2d0,0d0,1d0 - wc + wc*r > 0.1d0)
+f_r = 1d0/max(1d0 - wr + wr*r,0.1d0)
+df_r = merge(-wr*dr*f_r**2d0,0d0,1d0 - wr + wr*r > 0.1d0)
+endsubroutine ch4si_f
 !**************************************************************************************************************************************
 subroutine read_n2c(n2c_g1,n2c_g2,n2c_g3)
 ! N:C (mol/mol) of NH3 released when OM pools g1, g2, g3 decompose (net mineralisation); ./n2c.in (a header line, then
@@ -22018,7 +22075,7 @@ real(kind=8),dimension(nz):: po2x,vmax,mo2,fe2x,koxa,vmax2,mom2,komb,beta,omx,om
     & ,mo2g1,mo2g2,mo2g3,kg1,kg2,kg3,g1x,g2x,g3x,pyx,fe3x,koxpy,pnh3x,nh4x,dnh4_dpro,dnh4_dpnh3 &
     & ,no3x,pn2ox,dv_dph_tmp,fe2f,dfe2f_dfe2,dfe2f_dpco2,dfe2f_dpro,dfe2f_dso4f,pco2x,hrpy,oxax &
     & ,vmax_tmp,z_dum,amfe3x,so4x,pch4x,f_g2,f_ea,f_o2,f_no3,f_so4,f_fe3,f_sat,grx,fe2fr,lnomg,f_gr,gtx,fe2adx,sfr,sad &
-    & ,fesx,hsfr,f_ph,df_ph,six,f_si,df_si
+    & ,fesx,hsfr,f_ph,df_ph,six,f_si,df_si,f_cb,df_cb,f_rb,df_rb
 #ifdef cache_spec
 real(kind=8),dimension(:),allocatable,save::profte,dprofte_dpro,dprofte_dios,profti,dprofti_dpro,dprofti_dios
 #else
@@ -23502,12 +23559,13 @@ select case(trim(adjustl(rxn_name)))
         ! radial O2 loss from rice roots: O2 source with the rtco2 root profile; column total krxn1 (mol O2 m-2 yr-1)
         six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
         call rtsi_f(nz,six,f_si,df_si) ! Si feedback on root O2 loss (1 unless ./rtsi.in)
+        call ch4si_f(nz,six,f_cb,df_cb,f_rb,df_rb) ! Si root barrier (1 unless ./ch4si.in)
         vmax = krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),:)/krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),1)
         rxn_ext = krxn1_ext_all(findloc(chrrxn_ext_all,'rtoxy',dim=1),1)*vmax &
-            & /krxn2_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),1)*min(2d0*sat,1d0)*f_si
+            & /krxn2_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),1)*min(2d0*sat,1d0)*f_si*f_rb
         select case(trim(adjustl(sp_name)))
             case('si')
-                drxnext_dmsp = rxn_ext/f_si*df_si
+                drxnext_dmsp = rxn_ext/f_si*df_si + rxn_ext/f_rb*df_rb
             case default
                 drxnext_dmsp = 0d0
         endselect
@@ -23525,11 +23583,15 @@ select case(trim(adjustl(rxn_name)))
         ! constant following root density (set in the main program); rhizosphere oxidation fraction via stoichiometry 
         kch4 = keqgas_h(findloc(chrgas_all,'pch4',dim=1),ieqgas_h0)
         vmax = krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),:) ! yr^-1 
-        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)
+        six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
+        call ch4si_f(nz,six,f_cb,df_cb,f_rb,df_rb) ! Si root barrier on plant conductance (1 unless ./ch4si.in)
+        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_cb
         
         select case(trim(adjustl(sp_name)))
             case('pch4')
-                drxnext_dmsp = vmax*poro*sat*1d3*kch4
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*f_cb
+            case('si')
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*df_cb
             case default
                 drxnext_dmsp = 0d0
         endselect 
@@ -23546,13 +23608,17 @@ select case(trim(adjustl(rxn_name)))
         kch4 = keqgas_h(findloc(chrgas_all,'pch4',dim=1),ieqgas_h0)
         vmax = krxn1_ext_all(findloc(chrrxn_ext_all,'ch4pl',dim=1),:) ! yr^-1 
         call pox_f(nz,prox,f_ph,df_ph)
-        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_ph
+        six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
+        call ch4si_f(nz,six,f_cb,df_cb,f_rb,df_rb) ! Si root barrier on plant conductance (1 unless ./ch4si.in)
+        rxn_ext = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_ph*f_cb
         
         select case(trim(adjustl(sp_name)))
             case('pch4')
-                drxnext_dmsp = vmax*poro*sat*1d3*kch4*f_ph
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*f_ph*f_cb
+            case('si')
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*f_ph*df_cb
             case('pro')
-                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*df_ph
+                drxnext_dmsp = vmax*poro*sat*1d3*kch4*(pch4x - 1.9d-6)*df_ph*f_cb
             case default
                 drxnext_dmsp = 0d0
         endselect 
@@ -23606,6 +23672,32 @@ select case(trim(adjustl(rxn_name)))
                 drxnext_dmsp = v_tmp*f_sat*f_fe3*(-1d0)/prox
             case('fes')
                 drxnext_dmsp = v_tmp*f_sat*lnomg*km_tmp1/(fesx + km_tmp1)**2d0*merge(0d0,1d0,lnomg > 0d0)
+            case default
+                drxnext_dmsp = 0d0
+        endselect 
+        
+    case('fhage') 
+        ! ageing of ferrihydrite (amfe3) to goethite (gt), catalysed by aqueous Fe2+ (Hansel et al. 2005; Pedersen et al. 2005) 
+        ! and inhibited by dissolved Si (Si sorbed on ferrihydrite blocks transformation; Cornell and Schwertmann 2003; 
+        ! Jones et al. 2009): rate = k amfe3 fe2/(fe2 + K_fe2) K_si/(K_si + si); k = krxn1 (yr-1), K_si = krxn2 (mol L-1), 
+        ! K_fe2 = 1e-4 mol L-1. Goethite is reduced only slowly (g2gt), so ageing removes Fe(III) from the reducible pool.
+        v_tmp = krxn1_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),1) ! yr-1
+        km_tmp1 = krxn2_ext_all(findloc(chrrxn_ext_all,'fhage',dim=1),1) ! mol L-1 (Si)
+        km_tmp2 = 1d-4 ! mol L-1 (Fe2+)
+        six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
+        fe2fr = max(maqx_loc(findloc(chraq_all,'fe2',dim=1),:),0d0)
+        f_ea = fe2fr/(fe2fr + km_tmp2)
+        f_g2 = km_tmp1/(max(six,0d0) + km_tmp1)
+        f_sat = min(2d0*sat,1d0)
+        rxn_ext = v_tmp*max(amfe3x,0d0)*f_ea*f_g2*f_sat ! no ageing of a (numerically) negative pool
+        
+        select case(trim(adjustl(sp_name)))
+            case('amfe3')
+                drxnext_dmsp = merge(v_tmp*f_ea*f_g2*f_sat,0d0,amfe3x>0d0)
+            case('fe2')
+                drxnext_dmsp = v_tmp*max(amfe3x,0d0)*km_tmp2/(fe2fr + km_tmp2)**2d0*f_g2*f_sat
+            case('si')
+                drxnext_dmsp = v_tmp*max(amfe3x,0d0)*f_ea*(-1d0)*km_tmp1/(max(six,0d0) + km_tmp1)**2d0*f_sat
             case default
                 drxnext_dmsp = 0d0
         endselect 
@@ -29750,9 +29842,33 @@ integer i_c,i_p,i_n ! 1 -- iz, 2 -- iz + 1, 3 -- iz - 1
 data i_c,i_p,i_n/1,2,3/
 
 logical ghost_node
+! paddy floodwater solute exchange (v25): while the surface is flooded, the top cell exchanges solutes with
+! floodwater that is renewed by irrigation water (conc maqi) and discharged laterally (drains, overflow).
+! kaq [m yr-1] = mean floodwater discharge rate over the flooded period, read once from ./floodwater_aq.in
+! (header line, then the value; absent or 0 = closed top as before). It acts in series with diffusion
+! across the upper half of the top cell and is weighted by w = (sat(1)-0.9)/0.1, as for gas exchange.
+! The resulting top-boundary diffusive flux (column dif in flx_aq) is the lateral export.
+real(kind=8),save::kaq = -1d0
+real(kind=8)::wfwa,edifhalf
+logical::exist_fwa,fwa_open,aq_cl
 
 ! ghost_node = .true.
 ghost_node = .false.
+
+if (kaq < 0d0) then 
+    kaq = 0d0
+    inquire(file='./floodwater_aq.in',exist=exist_fwa)
+    if (exist_fwa) then 
+        open(9871,file='./floodwater_aq.in',status='old',action='read')
+        read(9871,'()')
+        read(9871,*) kaq
+        close(9871)
+        print *,'floodwater solute discharge rate [m/yr]: ',kaq
+    endif 
+endif 
+wfwa = min(1d0,max(0d0,(sat(1)-0.9d0)/0.1d0))
+fwa_open = aq_diff_close .and. kaq*wfwa > 0d0
+aq_cl = aq_diff_close .and. .not. fwa_open
 
 faq_dif = 0d0
 dfaqdif_dmaq = 0d0
@@ -29783,6 +29899,10 @@ do ispa=1,nsp_aq
 	
 	edif_p = edif_p/dz_p
 	edif_n = edif_n/dz_n
+	if (fwa_open) then ! floodwater discharge in series with diffusion across the upper half of the top cell
+		edifhalf = 1d3*poro(1)*sat(1)*( tora(1)*daq(ispa) + disp(1) )/(0.5d0*dz(1))
+		edif_n(1) = 1d0/( 1d0/(1d3*kaq*wfwa) + 1d0/edifhalf )
+	endif 
 	
 	
 	caq_tmp = 0d0
@@ -29798,7 +29918,7 @@ do ispa=1,nsp_aq
 	
 	if (ghost_node) caq_tmp_n(1) = 2d0*maqi(ispa) - maqft(ispa,1)
 	
-	if (aq_diff_close) caq_tmp_n(1) = maqft(ispa,1) ! making the flux at the top 0
+	if (aq_cl) caq_tmp_n(1) = maqft(ispa,1) ! making the flux at the top 0
 	
 	! --- first consider only flux coming down 
 	
@@ -29816,7 +29936,7 @@ do ispa=1,nsp_aq
 		dfaqdif_dios(ispa,1,i_c) = dfaqdif_dios(ispa,1,i_c) + edif_n(1)*( dmaqft_dios(ispa,1) )/dz(1)  
 	endif 
 	
-	if (aq_diff_close) then 
+	if (aq_cl) then 
 		! dfaqdif_dpro(ispa,1,i_c) = dfaqdif_dpro(ispa,1,i_c) - edif_n(1)*( dmaqft_dpro(ispa,1) )/dz(1) ! making flux 0 
 		! dfaqdif_dios(ispa,1,i_c) = dfaqdif_dios(ispa,1,i_c) - edif_n(1)*( dmaqft_dios(ispa,1) )/dz(1) ! making flux 0 
 		dfaqdif_dpro(ispa,1,i_c) = 0d0 ! making flux 0 
@@ -29832,7 +29952,7 @@ do ispa=1,nsp_aq
 			dfaqdif_dmaq(ispa,ispa2,1,i_c) = dfaqdif_dmaq(ispa,ispa2,1,i_c) + edif_n(1)*( dmaqft_dmaqf(ispa,ispa2,1) )/dz(1)  
 		endif 
 		
-		if (aq_diff_close) then 
+		if (aq_cl) then 
 			! dfaqdif_dmaq(ispa,ispa2,1,i_c) = dfaqdif_dmaq(ispa,ispa2,1,i_c) - edif_n(1)*( dmaqft_dmaqf(ispa,ispa2,1) )/dz(1) ! making flux 0 
 			dfaqdif_dmaq(ispa,ispa2,1,i_c) = 0d0 ! making flux 0 
 		endif 
@@ -29847,7 +29967,7 @@ do ispa=1,nsp_aq
 			dfaqdif_dmgas(ispa,ispg,1,i_c) = dfaqdif_dmgas(ispa,ispg,1,i_c) + edif_n(1)*( dmaqft_dmgas(ispa,ispg,1) )/dz(1) 
 		endif 
 		
-		if (aq_diff_close) then 
+		if (aq_cl) then 
 			! dfaqdif_dmgas(ispa,ispg,1,i_c) = dfaqdif_dmgas(ispa,ispg,1,i_c) - edif_n(1)*( dmaqft_dmgas(ispa,ispg,1) )/dz(1) ! making flux 0 
 			dfaqdif_dmgas(ispa,ispg,1,i_c) = 0d0 ! making flux 0 
 		endif 

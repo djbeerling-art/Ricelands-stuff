@@ -15,10 +15,10 @@
 #   cation release = base-cation charge released by basalt dissolution: the CDR potential, realised as the cations
 #                   leave the soil (in one season most stay on the exchange complex)
 # Net GHG change vs control (t CO2-eq/ha, AR6 GWP100, non-fossil CH4):
-#   realised  = dCH4*27 + dN2O*273 - dALK export (or d(potentially durable ALK) with --alk=pda) - dcalcite, with dcalcite capped at the basalt's cation release
+#   realised  = dCH4*27 + dN2O*273 - dALK export (or d(potentially durable ALK) with --alk=pda) - dcalcite, with dcalcite capped at half the basalt's cation release (eq)
 #               less dALK export (calcite beyond that is not rock-derived CDR)
 #   potential = dCH4*27 + dN2O*273 - cation release
-import sys,numpy as np
+import sys,os,numpy as np
 
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
 opt  = dict(a[2:].split('=') for a in sys.argv[1:] if a.startswith('--') and '=' in a)
@@ -27,6 +27,18 @@ tend = days/365.
 warned = set()
 
 def integ(run,name):
+    # Prefer SCEPTER's exact running integral (int_flx_*: time-averaged rate since t=0, so total = value x time). The
+    # output-snapshot rates in flx_* are instantaneous and can carry large one-step spikes (seen for calcite, whose
+    # precipitation/redissolution flips within an output interval), so summing them can misstate the season total.
+    fi = f'{run}/flx/int_flx_{name}.txt'
+    if os.path.exists(fi) and not os.environ.get('SNAPSHOT_FLX'):
+        h = open(fi).readline().split()
+        d = np.atleast_2d(np.loadtxt(fi,skiprows=1))
+        if d[-1,0] < tend*0.999 and run not in warned:
+            warned.add(run); print(f'WARNING: {run} ends at {d[-1,0]*365:.1f} d, before the {days:.0f}-d season',file=sys.stderr)
+        k = np.searchsorted(d[:,0], tend*1.0001)   # last row at or before tend (int_flx rows share flx_ output times)
+        row = d[max(k-1,0)]
+        return {h[i]:row[i]*row[0] for i in range(1,len(h))}
     f = f'{run}/flx/flx_{name}.txt'
     h = open(f).readline().split()
     d = np.loadtxt(f,skiprows=1)
@@ -50,7 +62,17 @@ def season(run):
         if 'fe2' not in warned: warned.add('fe2'); print('WARNING: no flx_aq-fe2.txt (pruned?): potentially durable ALK unknown',file=sys.stderr)
     try: nh4 = integ(run,'gas-pnh3')['adv']
     except (OSError,KeyError): nh4 = 0.
-    o['potentially durable ALK (t CO2/ha)'] = o['ALK export (t CO2/ha)'] - 2*(fe2+nh4)*0.4401
+    # v25 floodwater discharge (--kaq): lateral export = top-boundary 'dif' flux; its alkalinity is the charge balance of
+    # the exported major ions (ALK = cations - strong anions, Fe2+ counted as in SCEPTER's ALK and removed again for PDA)
+    lat = latfe = 0.
+    for sp,z in (('ca',2),('mg',2),('na',1),('k',1),('fe2',2),('so4',-2),('cl',-1),('no3',-1)):
+        try: v = integ(run,'aq-'+sp).get('dif',0.)
+        except OSError: v = 0.
+        lat += z*v
+        if sp == 'fe2': latfe = v
+    o['lateral ALK (t CO2/ha)'] = lat*0.4401
+    o['ALK export (t CO2/ha)'] += lat*0.4401
+    o['potentially durable ALK (t CO2/ha)'] = o['ALK export (t CO2/ha)'] - 2*(fe2+latfe+nh4)*0.4401
     try: o['calcite (t CO2/ha)'] = -integ(run,'sld-cc')['cc']*0.4401   # cc column: dissolution positive
     except OSError: o['calcite (t CO2/ha)'] = 0.
     # rock minerals = those in the run's dust.in (calcite, Fe(III) oxide and inert excluded); their base-cation charge
@@ -83,6 +105,6 @@ for run,dose in zip([args[0]]+args[1:],[0.]+doses):
     # alkalinity): beyond that, its Ca and alkalinity come from the exchange complex and Fe/SO4 reduction, which is
     # not rock-derived and reverses on drainage (found in warm, Fe-rich archetypes, where a small pH lift tips the
     # soil into calcite precipitation of several t CO2/ha)
-    cdr  = dalk + min(dcc, max(o['cation release (t CO2/ha)']-dalk, 0.)) if run != args[0] else 0.
+    cdr  = dalk + min(dcc, 0.5*max(o['cation release (t CO2/ha)']-dalk, 0.))  # 1 mol CaCO3 (1 CO2) per 2 eq if run != args[0] else 0.
     print(run.split('/')[-1][:14].ljust(14)+f'{dose:6.0f}'+''.join(f'{o[k]:12.4g}' for k in keys)
           +f' {dch4:10.3f} {dn2o:10.3f} {cdr:6.3f} {dch4+dn2o-cdr:7.3f} {dch4+dn2o-o["cation release (t CO2/ha)"]:8.3f}')

@@ -18,6 +18,14 @@
 # --kfw=<m/yr> sets the floodwater gas transfer velocity between the flooded surface layer and the atmosphere
 #   (written to floodwater.in; default 36.5 m/yr = 0.1 m/d, limited by the diffusive boundary layer at the soil
 #   surface); --kfw=0 restores SCEPTER's closed top boundary for dissolved gases.
+# --kaq=<m/yr> floodwater solute discharge (v25): while flooded, the top cell exchanges solutes with floodwater that
+#   is renewed by irrigation water and discharged laterally at this mean rate (floodwater_aq.in; in series with
+#   diffusion across the upper half of the top cell). Lateral export = the top-boundary 'dif' flux in flx_aq.
+#   E.g. 100 mm per season over ~0.27 yr flooded -> --kaq=0.37. Absent/0 = closed top (as before v25).
+#   Adopted central value (1 Nov 2026): 200 mm/season surface discharge for ALL regimes, sensitivity x0.5-x2 (100-400 mm).
+#   Lit: Qi 2020 Sci Rep 106-195 mm; Sujono 2010 JWARP 318-399 mm; Peng 2012 Irrig Drain 61:285 426 mm; Tsubo 2007 Ecol Model;
+#   Bouman 2007 IRRI. kaq = 0.2 m / flooded years: continuous flooding (~0.27 yr) -> --kaq=0.74; AWD/rainfed (~0.21 yr) -> --kaq=0.96.
+#   Pots/batch: omit (closed).
 # --fallow runs the column drained (surface saturation 0.5, water table at 0.5 m), e.g. to spin up the soil OM
 #   (--fsat=<surface saturation> and --fzw=<water table depth, m> change both)
 #   and Fe(III) stocks before a rice season; --rstrt=<tag> starts from the end state of run flood_<tag>.
@@ -54,6 +62,8 @@
 #   without it ch4pl's stoichiometry keeps the fixed Pox 0.5 and ghg_budget.py counts half of ch4pl as emitted.
 # --rtsi=<ksi>:<siref>:<w> makes root O2 loss (rtoxy) depend on dissolved Si (mol/L): x 1 - w + w*h(si)/h(siref),
 #   h = si/(si + ksi) (rtsi.in); e.g. 5e-4:2.7e-4:0.5 (Si-fed rice has higher root oxidising activity).
+# --ch4si=<ksi>:<siref>:<wc>:<wr> alternative Si feedback via the root apoplastic barrier: barrier resistance
+#   b = 1 - w + w*h(si)/h(siref); plant CH4 transport (ch4pl, ch4rx) x 1/b(wc), root O2 loss (rtoxy) x 1/b(wr) (ch4si.in).
 # --n2c=<mol N/mol C> NH3 released per OM C decomposed (n2c.in; default 0.1, ~0.03 for straw/root inputs).
 # --o2inh=<mol/L> O2 inhibition constant of all anaerobic pathways (o2inh.in; default 2.52e-5).
 # --n2oy=pH50:n:rmin  pH-dependent N2O yield of denitrification (n2oy.in): a fraction rmin + (1-rmin)/(1+10^(n(pH-pH50)))
@@ -239,6 +249,9 @@ if os.path.exists(os.path.join(rundir,'n2c.in')): os.remove(os.path.join(rundir,
 if 'n2c' in opt:
     with open(os.path.join(rundir,'n2c.in'),'w') as f: f.write('n2c\n%s\n' % opt['n2c'])
 if os.path.exists(os.path.join(rundir,'rtsi.in')): os.remove(os.path.join(rundir,'rtsi.in'))
+if os.path.exists(os.path.join(rundir,'ch4si.in')): os.remove(os.path.join(rundir,'ch4si.in'))
+if 'ch4si' in opt:
+    with open(os.path.join(rundir,'ch4si.in'),'w') as f: f.write('ksi siref wc wr\n%s\n' % opt['ch4si'].replace(':',' '))
 if 'rtsi' in opt:
     with open(os.path.join(rundir,'rtsi.in'),'w') as f: f.write('ksi siref w\n%s\n' % opt['rtsi'].replace(':',' '))
 if os.path.exists(os.path.join(rundir,'pox.in')): os.remove(os.path.join(rundir,'pox.in'))
@@ -254,6 +267,8 @@ if 'grlogk' in opt:
     with open(os.path.join(rundir,'grlogk.in'),'w') as f: f.write('log K\n%s\n' % opt['grlogk'])
 with open(os.path.join(rundir,'floodwater.in'),'w') as f:
     f.write('transfer velocity [m/yr]\n%s\n' % opt.get('kfw','36.5'))
+if 'kaq' in opt:
+    with open(os.path.join(rundir,'floodwater_aq.in'),'w') as f: f.write('floodwater solute discharge rate [m/yr]\n%s\n' % opt['kaq'])
 
 # --psd=<file>: rock dust PSD (psdrain.in, e.g. data/psdrain_renforth_p80-100um.in from paddy/make_psd_renforth.py),
 # tracked for the rock minerals only; soil and secondary solids keep the single radius --prad
