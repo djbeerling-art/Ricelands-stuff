@@ -39,7 +39,7 @@ class Doc:
             hit=(a<e and b>i) if old else False
             ipt=(not done) and (a<e<=b if old else a<i<=b or (i==0 and a==0 and b>0))
             if not hit and not ipt: out+=r; continue
-            assert r.count('<w:t')==1 and '<w:delText' not in r,('complex run',t)
+            assert len(re.findall(r'<w:t[ >]',r))==1 and '<w:delText' not in r,('complex run',t)
             head=re.match(r'<w:r(?: [^>]*)?>',r).group(); rpr=s._rpr(r)
             if rpr0 is None: rpr0=rpr
             k1,k2=max(a,i)-a,min(b,e)-a
