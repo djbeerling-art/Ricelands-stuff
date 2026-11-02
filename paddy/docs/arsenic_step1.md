@@ -143,6 +143,33 @@ irrigation alkalinity 1 and 5, and alkalinity 5 with 2% soil calcite (`SOILX=--s
 - Silica alone raises Si about 5x with no alkalinisation; T = 2.74 exceeds R_As in every soil, so all are 'suppress'
   (competitive uptake ratio 0.32-0.62).
 
+### Where the oxidised As(III) goes (silica runs, alkalinity 1)
+
+Root-zone (0-0.2 m) As inventories, season means, mmol m-2, control / silica:
+
+| Goethite | As(III) | As(V) | Total As | Below 0.2 m | Net transport into column |
+|---|---|---|---|---|---|
+| 0.5% | 19.97 / 17.50 | 18.57 / 21.01 | 38.54 / 38.51 | 52.80 / 52.83 | 0.436 / 0.432 |
+| 2% | 20.59 / 18.16 | 18.47 / 20.90 | 39.06 / 39.06 | 52.85 / 52.86 | 0.444 / 0.444 |
+| 6% | 21.20 / 18.75 | 18.52 / 20.97 | 39.72 / 39.72 | 53.63 / 53.63 | 0.446 / 0.446 |
+
+- The As(III) "lost" with silica (about 2.45 mmol m-2) reappears as As(V) in the same root zone. Total As, the deeper
+  inventory and exchange across the column boundaries do not change. It is a speciation shift, not an export.
+- The protective effect therefore holds only while that As(V) stays oxidised and sorbed. It can be re-reduced next
+  season; the year 1 vs year 3 comparison in the sweep shows whether it persists.
+- It rests on the uncalibrated As(III) oxidation constant (`as3ox`/`as3oa` 1000 /yr, O2 half-saturation 2e-5 M).
+
+### Pre-registered correction for the 27-soil sweep (fixed 2 Nov 2026, before the sweep results)
+
+From the silica runs only (8 soils): R_inv = 0.84 (range 0.83-0.85); log10(R_As / rule) = -0.145 (range -0.11 to -0.17).
+Two corrected predictors will be scored against the basalt sweep without refitting:
+
+- A (inventory only): R_As = 0.84 / ((1-f) + f/q)
+- B (full offset): R_As = 10^-0.145 / ((1-f) + f/q) = 0.72 / ((1-f) + f/q)
+
+Score: RMSE of log10 R_As and the share of soils whose uptake class (with T) is unchanged, against the uncorrected rule.
+Basalt adds pH, Fe and redox effects the silica runs lack, so this is an out-of-sample test.
+
 ## Next
 
 1. Calibrate `f_site`, `Sx` and the redox constants against porewater As time series. Candidates are Seyfferth & Fendorf 2012, He 2020 and Limmer 2020.
