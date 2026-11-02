@@ -10,17 +10,17 @@
 # Future cases: add BASE_OUT=<baseline SCEPTER_OUT> (and optionally RESETTLE=3) to --export to start from the baseline's
 # settled soil instead of the full spin-up + settle (see run_arch_v22.sh).
 # Per-archetype stdout/stderr go to $STATUS_DIR/<arch>.log; the task log lists each archetype's exit code.
-#SBATCH --job-name=rice23p
+#SBATCH --job-name=rice25p
 #SBATCH --cpus-per-task=12
 #SBATCH --mem-per-cpu=2G
 #SBATCH --time=12:00:00
 #SBATCH --partition=sheffield
 #SBATCH --account=default
-#SBATCH --output=logs/rice23p_%A_%a.out
+#SBATCH --output=logs/rice25p_%A_%a.out
 source stanage_handoff/slurm/modules.sh
 # SCEPTER is serial: keep OpenBLAS/OpenMP to one thread per archetype
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
-source stanage_handoff/v22_options.env
+source stanage_handoff/v25_options.env
 export SCEPTER_OUT=${SCEPTER_OUT:-/mnt/parscratch/users/$USER/scepter/}
 export STATUS_DIR=${STATUS_DIR:-status} DOSES=${DOSES:-0 10 20} YEARS=${YEARS:-10}
 mkdir -p $SCEPTER_OUT/paddy $STATUS_DIR

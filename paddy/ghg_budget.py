@@ -105,6 +105,7 @@ for run,dose in zip([args[0]]+args[1:],[0.]+doses):
     # alkalinity): beyond that, its Ca and alkalinity come from the exchange complex and Fe/SO4 reduction, which is
     # not rock-derived and reverses on drainage (found in warm, Fe-rich archetypes, where a small pH lift tips the
     # soil into calcite precipitation of several t CO2/ha)
-    cdr  = dalk + min(dcc, 0.5*max(o['cation release (t CO2/ha)']-dalk, 0.))  # 1 mol CaCO3 (1 CO2) per 2 eq if run != args[0] else 0.
+    # 1 mol CaCO3 (1 CO2) per 2 eq
+    cdr  = dalk + min(dcc, 0.5*max(o['cation release (t CO2/ha)']-dalk, 0.)) if run != args[0] else 0.
     print(run.split('/')[-1][:14].ljust(14)+f'{dose:6.0f}'+''.join(f'{o[k]:12.4g}' for k in keys)
           +f' {dch4:10.3f} {dn2o:10.3f} {cdr:6.3f} {dch4+dn2o-cdr:7.3f} {dch4+dn2o-o["cation release (t CO2/ha)"]:8.3f}')

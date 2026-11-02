@@ -1,3 +1,4 @@
+# DEPRECATED (2 Nov 2026): one-season layout of run_global.sh; use paddy/global/collect_chains.py for v25b chains.
 # Collect global archetype runs (run_global.sh) into per-archetype, per-cell and per-nation season GHG tables.
 # Usage: python3 paddy/global/collect.py <outdir> <cells.csv> [doses, default 10,20]   (from the repository root,
 #   SCEPTER_OUT set as for the runs). Writes <outdir>/arch_ghg.csv, cell_ghg.csv, nation_ghg.csv.

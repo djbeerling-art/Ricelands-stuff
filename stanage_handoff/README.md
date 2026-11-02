@@ -4,6 +4,22 @@ Goal (David, 31 Oct 2026): run the global riceland enhanced-weathering simulatio
 Stanage HPC, using the paddy SCEPTER model as frozen for the GMD paper (v22). These runs are for the follow-on
 global paper (Nature Geoscience target), not the GMD paper, which has no global runs.
 
+## 0. RESTART ON v25b (2 Nov 2026) - read this first; sections below are the 31 Oct v22/v23 history
+- Branch `claude/project-thread-lst1mi` now contains `claude/project-thread-pip6bj-pan` (final GMD model).
+- Model: `scepter_paddy_v25` = scepter.f90 at a8159b4, `makefile_paddy_fast` (`slurm/build.sh`); calibration
+  `paddy/krxn_calibrated_v25b.in` (b0ba34a); options `stanage_handoff/v25_options.env` (sourced by arch_pack/arch_array/
+  check jobs; v22_options.env is history). Si feedback baseline **w = 0.15** (`--rtsi=2e-3:2.7e-4:0.15`; override W=).
+  XRS=,fhage; TILL 0.2; q 0.5; fe3in 0.3; `--kaq` 0.74 irrigated / 0.96 rainfed (added by run_arch_v22.sh to the chains).
+- Protocol (= GMD v25b pipeline_v25b + chain_v25): 3-yr drained spin-up (no --awd/--kaq) -> control settle to convergence
+  (7-12 yr, season CH4 <2 %/yr over two years; state `flood_st22_<a>_set`, status line gives years) -> 10-yr chains per dose
+  from that state. Future-climate cases (BASE_OUT) start from the baseline `_set` state and re-settle 3 yr.
+- Budgets: `paddy/ghg_budget.py` (calcite cap = half the unexported cation equivalents, f96554d) and
+  `paddy/global/collect_chains.py` (same cap, cumulative; PDA; transport penalty columns).
+- Build/protocol check: `sbatch stanage_handoff/slurm/check_irr061.sbatch` -> `compare_ref.py` vs GMD set v25bb (irr061 yr 1).
+- Domain: `stanage_handoff/arch_150/` = 602 climate-aware archetypes, 95.8 Mha of rice within 150 km of basic volcanics
+  (full-res GLiM), baseline + 20 CMIP6 cases; `validation/validation.csv` = 100 singleton cells for the upscaling check.
+- `paddy/global/run_global.sh` and `collect.py` are the old one-season v5 setup: deprecated.
+
 ## 1. Access (working as of 31 Oct 07:03 UTC)
 - A Remote Control session on David's university PC (UOSD4A2CD73110B, Windows 11, folder
   `C:\Users\bo1djb\Documents\Claude Oct 2026`) can run `ssh bo1djb@stanage.shef.ac.uk` with no password or MFA,

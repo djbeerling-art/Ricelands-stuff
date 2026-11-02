@@ -1,4 +1,8 @@
 #!/bin/bash
+# DEPRECATED (2 Nov 2026): old one-season global setup (v5 calibration, 15-cell column, methanogen pH response, no Si
+# feedback, no plough pan). Global runs now use stanage_handoff/slurm/arch_pack.sbatch -> stanage_handoff/run_arch_v22.sh
+# with stanage_handoff/v25_options.env (v25b), collected by paddy/global/collect_chains.py. Kept for provenance only.
+echo 'run_global.sh is deprecated: see stanage_handoff/README.md' >&2; exit 1
 # Run every archetype of archetypes.csv (archetypes.py): a 3-yr fallow spin-up, then one season at each basalt dose.
 # Usage: paddy/global/run_global.sh <outdir with archetypes.csv> [doses, default "0 10 20"] [parallel jobs, default 4]
 # Run from the repository root with SCEPTER_OUT set; logs and status go to <outdir>. Tags: gs_<arch> (spin-up),

@@ -1,7 +1,9 @@
 # Collect global multi-year archetype chains (stanage_handoff/run_arch_v22.sh, tags g22_<arch>_<dose>_y<N>{s,f})
 # into per-archetype, per-cell and per-nation year-round GHG / CDR tables, using the same budget as the GMD v22
 # archetype figure (v22/figcdr22.py): season + fallow each year, treatment minus the year-matched dose-0 chain,
-# calcite counted as CDR only up to the rock cations not exported as alkalinity (cumulative cap), GWP100 (CH4 27, N2O 273).
+# calcite counted as CDR only up to HALF the rock cation equivalents not exported as alkalinity (1 mol CaCO3 = 1 CO2 per
+# 2 eq; cumulative cap, as ghg_budget.py from f96554d / Eq. 17 of the GMD paper), GWP100 (CH4 27, N2O 273).
+# 'ret' = cation equivalents still in the soil (t CO2-eq of charge) = cat - alk - 2*cc.
 # Usage (repository root):
 #   python3 paddy/global/collect_chains.py <run dir = $SCEPTER_OUT/paddy> <archetypes.csv> <cell_map.csv> <cells.csv> <outdir>
 #       [--doses=10,20] [--years=10] [--tag=g22] [--alk=gross|pda (default pda)]
@@ -47,7 +49,7 @@ for a in pd.read_csv(ARCH).itertuples():
                      cat=sum(b[x]['cation release (t CO2/ha)'] for x in 'sf'))
             yrs.append(r)
             for k in t: t[k] += r[k]
-        t['cc'] = min(t['cc'], max(t['cat']-t['alk'], 0.)); t['ret'] = t['cat']-t['alk']-t['cc']
+        t['cc'] = min(t['cc'], 0.5*max(t['cat']-t['alk'], 0.)); t['ret'] = t['cat']-t['alk']-2*t['cc']
         t['net'] = t['ch4s']+t['ch4f']+t['n2o']-t['alk']-t['cc']
         t['net_pot'] = t['ch4s']+t['ch4f']+t['n2o']-t['cat']
         cum.append(dict(arch=a.arch, dose=d, years=NY, **t))

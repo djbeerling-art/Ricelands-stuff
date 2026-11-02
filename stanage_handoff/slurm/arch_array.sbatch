@@ -9,17 +9,17 @@
 #          --array=4 --time=04:00:00 stanage_handoff/slurm/arch_array.sbatch stanage_handoff/arch/pilot10.csv
 # 10-yr chains at 0/10/20 t/ha: ~8-9 core-hours per archetype in the cloud container (basalt years slow to ~25 min
 # after year 5), so 24 h wall time leaves margin; the script resumes if resubmitted.
-#SBATCH --job-name=rice23
+#SBATCH --job-name=rice25
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --time=24:00:00
 #SBATCH --partition=sheffield
 #SBATCH --account=default
-#SBATCH --output=logs/rice23_%A_%a.out
+#SBATCH --output=logs/rice25_%A_%a.out
 source stanage_handoff/slurm/modules.sh
 # SCEPTER is serial: keep OpenBLAS/OpenMP to the one allocated core (no thread oversubscription)
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
-source stanage_handoff/v22_options.env
+source stanage_handoff/v25_options.env
 export SCEPTER_OUT=${SCEPTER_OUT:-/mnt/parscratch/users/$USER/scepter/}
 STATUS_DIR=${STATUS_DIR:-status}
 mkdir -p $SCEPTER_OUT/paddy $STATUS_DIR
