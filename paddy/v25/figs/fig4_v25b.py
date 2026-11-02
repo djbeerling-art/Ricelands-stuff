@@ -1,5 +1,5 @@
 # Fig 4 (v25b): evaluation against observations. Model values: v25b runs (runE25b.sh, runW25b.sh/runW25c.sh; w 0.15, slag granular
-# 1-7 mm, Gong/Wang 2024 P80 50 um); slag production/oxidation from flood_y5slag_* gas budgets; AWD ratio and ferric Fe are v22 (marked).
+# 1-7 mm, Gong/Wang 2024 P80 50 um); slag production/oxidation from flood_y5slag_* gas budgets; AWD ratio is v22 (marked); ferric Fe gain from v25b flood_y5slag_8w0.15 vs y5slag_0 (column Fe(III) change placed in 0-0.15 m, BD 1.1).
 # a: CH4 responses, calibration-informed comparisons separated from predictions; oxidation partitioning flagged.
 # b: model/observed for baselines, water-management response, cation release, soil carbonate and Fe(III); misfits flagged.
 import sys as _s; import os as _o; _s.path.insert(0,_o.path.dirname(_o.path.abspath(__file__))); import bigfont
@@ -36,7 +36,7 @@ R=[('Baseline CH$_4$','Wang 2014 control (mg m$^{-2}$ h$^{-1}$)',1.93,3.11,None,
    ('Cation release','Uchibayashi Na, 100 t/ha',4.8,4.6,None,1,0,'4.8 vs 4.6'),
    ('Cation release','Uchibayashi Mg, 100 t/ha',11.0,6.5,None,1,1,'11.0 vs 6.5 (olivine)'),
    ('Soil carbonate','Wang 2024 inorganic C gain\n0–20 cm (t CO$_2$ ha$^{-1}$)',0.10,1.20,None,0,1,'0.10 vs 1.20'),
-   ('Fe(III)','Wang 2014 ferric Fe gain, 8 t/ha, v22',0.5,5.6,None,0,1,'0.5 vs 5.6 g kg$^{-1}$ (v22)')]
+   ('Fe(III)','Wang 2014 ferric Fe gain, 8 t/ha',0.84,5.6,None,0,1,'0.84 vs 5.6 g kg$^{-1}$')]
 y=np.arange(len(R))[::-1]
 for yi,(g,l,m,o,m2,cal,bad,t) in zip(y,R):
     r=m/o; c=F if bad else (K if cal else B); mk='s' if cal else 'o'
