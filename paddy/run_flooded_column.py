@@ -98,6 +98,14 @@
 #   -9.98, Bourrie et al. 1999): the pH-stat sets porewater Fe2+ = 10^(log K + 2 pH).
 # --kaol=<wt fraction> puts kaolinite in the soil (spin-ups only; restarts inherit it). Without it secondary Al phases
 #   must nucleate from a 1e-20 seed, so porewater Al builds up and stalls plagioclase dissolution for weeks.
+# --as=<mg/kg>[:<ug/L>[:<f5>]] (arsenic branch, Step 1) tracks trace As: dissolved As(III)/As(V) (as3, as5), As sorbed on
+#   ferrihydrite (as3ad, as5ad) and the reactions as3sp, as5sp (Si-competitive sorption), as5rd (As(V) reduction) and
+#   as3ox (As(III) oxidation by O2), as5ra/as3oa (the same for sorbed As). <mg/kg> is the labile (oxide-bound) soil As, put in as sorbed As(V) (oxidised soil before
+#   flooding); <ug/L> is irrigation-water As (default 0), with As(V) fraction <f5> (default 0.1; groundwater As is mostly As(III)).
+#   List as3up with siup in the reactions for Si-competitive As(III) uptake by rice (placeholder constants).
+# --asx=<mol/m3> Si-insensitive As sorption sites (crystalline Fe oxides, clays, OM; soil-specific, default 0), written to
+#   krxn_ext.in as krxn2 of as3sp and as5sp.
+# --assite=<f> fraction of ferrihydrite weak sites available to As (as_sites.in; default 1 = fresh ferrihydrite).
 # Output goes to $SCEPTER_OUT (default ./scepter_output/) under paddy/flood_<tag>.
 import os,sys,shutil
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -108,6 +116,15 @@ flags  = [a for a in sys.argv[1:] if a.startswith('--')]
 args   = [a for a in sys.argv[1:] if not a.startswith('--')]
 tag    = args[0]
 rxns   = args[1].split(',') if args[1] != 'none' else []
+_asopt = next((a[5:] for a in sys.argv[1:] if a.startswith('--as=')),None)
+arsenic = _asopt is not None
+if arsenic:
+    _w = _asopt.split(':')
+    as_soil = float(_w[0])                                        # labile soil As, mg/kg
+    as_irr  = float(_w[1])*1e-6/74.9216 if len(_w) > 1 else 0.0   # irrigation As, mol/L
+    as_f5   = float(_w[2]) if len(_w) > 2 else 0.1
+    for r in ('as3sp','as5sp','as5rd','as3ox','as5ra','as3oa'):
+        if r not in rxns: rxns.append(r)
 if any(a.startswith('--n2oy=') for a in sys.argv[1:]) and 'g2n21' in rxns and 'g2n0' not in rxns: rxns.append('g2n0')
 if any(a.startswith('--pox=') for a in sys.argv[1:]) and 'ch4pl' in rxns and 'ch4rx' not in rxns: rxns.append('ch4rx')
 ttot   = float(args[2]) if len(args) > 2 else 0.5
@@ -174,6 +191,15 @@ rundir = os.path.join(outdir,f'paddy/flood_{tag}')
 os.makedirs(rundir,exist_ok=True)
 if os.path.exists(os.path.join(rundir,'krxn_ext.in')): os.remove(os.path.join(rundir,'krxn_ext.in'))
 if 'k' in opt: shutil.copy(opt['k'],os.path.join(rundir,'krxn_ext.in'))
+if os.path.exists(os.path.join(rundir,'as_sites.in')): os.remove(os.path.join(rundir,'as_sites.in'))
+if 'assite' in opt:
+    with open(os.path.join(rundir,'as_sites.in'),'w') as f: f.write('fraction of ferrihydrite sites available to As\n%s\n' % opt['assite'])
+if 'asx' in opt:
+    _kf = os.path.join(rundir,'krxn_ext.in')
+    _new = not os.path.exists(_kf)
+    with open(_kf,'a') as f:
+        if _new: f.write('name krxn1 krxn2\n')
+        f.write('as3sp -999 %s\nas5sp -999 %s\n' % (opt['asx'],opt['asx']))
 if os.path.exists(os.path.join(rundir,'precnucl.in')): os.remove(os.path.join(rundir,'precnucl.in'))
 if os.path.exists(os.path.join(rundir,'omcrit.in')): os.remove(os.path.join(rundir,'omcrit.in'))
 if 'omcrit' in opt:
@@ -236,7 +262,7 @@ if 'kaq' in opt:
 # tracked for the rock minerals only; soil and secondary solids keep the single radius --prad
 psd = opt.get('psd')
 sld_list = (['inrt','g2','amfe3'] + ((['sid','fe2ad'] if '--fe2sorb' in flags else ['sid','gr']) if fe2buf else []) + (['fes'] if ch4 else []) + (['urea'] if nfert > 0 else [])
-    + ([m for m in bas_min if m not in ('amfe3','inrt')] + [m for m in ['cc','ka','gb','amsi'] if m not in bas_min] if bas else []) + (['fe2o'] if '--feoh2' in flags else []) + (['gt'] if gtwt > 0 or '--gt0' in flags else []))
+    + ([m for m in bas_min if m not in ('amfe3','inrt')] + [m for m in ['cc','ka','gb','amsi'] if m not in bas_min] if bas else []) + (['fe2o'] if '--feoh2' in flags else []) + (['gt'] if gtwt > 0 or '--gt0' in flags else []) + (['as3ad','as5ad'] if arsenic else []))
 rock_min = [m for m in bas_min if m not in ('amfe3','inrt')] if bas else []
 
 # --kscale=<factor>[,<mineral>:<factor>...] multiplies the rate constants of the rock minerals (kinscale.in), e.g. to
@@ -277,11 +303,11 @@ spinup.run_a_scepter_run(
     # ---- tracers ----
     sld_list=sld_list,
     aq_list=(['fe2','fe3','ca','mg','na','k'] if fe2buf else ['fe2','fe3','ca'])
-        + (['so4','hs'] if ch4 else []) + (['no3'] if nitro else []) + (['si','al'] if bas else []) + (['cl'] if ref else []),
+        + (['so4','hs'] if ch4 else []) + (['no3'] if nitro else []) + (['si','al'] if bas else []) + (['cl'] if ref else []) + (['as3','as5'] if arsenic else []),
     gas_list=['pco2','po2'] + (['pch4'] if ch4 else []) + (['pnh3','pn2o'] if nitro else []),
     exrxn_list=rxns,
     # ---- boundary values ----
-    pr_list=[('inrt',1-fe3wt-kaol-amsiwt-gtwt-soilcc),('amfe3',fe3wt)] + ([('gt',gtwt)] if gtwt > 0 else []) + ([('ka',kaol)] if kaol > 0 else []) + ([('amsi',amsiwt)] if amsiwt > 0 else []) + ([('cc',soilcc)] if soilcc > 0 else []),
+    pr_list=[('inrt',1-fe3wt-kaol-amsiwt-gtwt-soilcc),('amfe3',fe3wt)] + ([('gt',gtwt)] if gtwt > 0 else []) + ([('ka',kaol)] if kaol > 0 else []) + ([('amsi',amsiwt)] if amsiwt > 0 else []) + ([('cc',soilcc)] if soilcc > 0 else []) + ([('as5ad',as_soil*1e-6),('as3ad',as_soil*1e-9)] if arsenic else []),
     # rain inputs are free (primary) species with -Drain_input_as_primary:
     # free Fe3+ must be near Fe(OH)3 equilibrium, otherwise hydrolysis makes total Fe(III) huge
     # --refsoil: river-type irrigation water (Ca 0.5, Mg 0.2, Na 0.3, K 0.05, Si 0.2, SO4 0.2, Cl 1.15 mM), pH ~7.6 at
@@ -289,7 +315,8 @@ spinup.run_a_scepter_run(
     rain_list=[('ca',(5e-4+max(irralk-5,0)*1e-4 if ref else 2.05e-4) if ch4 else 5e-6),('fe3',1e-27 if ref else 1e-21),('fe2',1e-10)]
         + ([('si',2e-4 if ref else 1e-4),('al',1e-15 if ref else 1e-12)] if bas else [])
         + ([('mg',2e-4),('na',3e-4),('k',5e-5),('cl',1.15e-3+(1-min(irralk,5))*2e-4)] if ref else [('mg',2e-6),('na',1e-5),('k',2e-6)] if fe2buf else [])
-        + ([('so4',2e-4),('hs',1e-12)] if ch4 else []) + ([('no3',1e-6)] if nitro else []),  # irrigation water ~0.2 mM SO42-, balanced by Ca above
+        + ([('so4',2e-4),('hs',1e-12)] if ch4 else []) + ([('no3',1e-6)] if nitro else [])
+        + ([('as3',max(as_irr*(1-as_f5),1e-15)),('as5',max(as_irr*as_f5,1e-15))] if arsenic else []),  # irrigation water ~0.2 mM SO42-, balanced by Ca above
     atm_list=[('pco2',3.16e-4),('po2',0.21),('pnh3',1e-50),('pn2o',3.3e-7 if nitro else 1e-50),('pch4',1.9e-6)],
     # cec [cmol/kg], log KH\\X for Na, K, Ca, Mg, Al, beta; Fe2+ follows Mg (+0.158) in the code
     sld_varlist_cec=[('inrt',cec,5.9,4.8,10.47,10.786,16.47,3.4)] if fe2buf else [],sld_varlist_omrain=[('g2',1.0)] + ([('urea',urea_frac)] if nfert > 0 else []) + ([('amfe3',float(opt['fe3in'])*88.854/omin)] if 'fe3in' in opt else []),
