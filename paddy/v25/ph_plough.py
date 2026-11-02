@@ -28,5 +28,27 @@ with open(SUM, 'w', newline='') as fo:
             R = [r for r in rows if r[1] == d and r[2] == y and 0 < float(r[4]) <= tflood + 1e-6]
             if R:
                 w.writerow([d, y, R[-1][4], R[-1][5], f"{np.mean([float(r[5]) for r in R]):.4f}"])
-print('wrote', OUT, len(rows), 'rows;', SUM)
+# year 0: end of flooding in the last settle season (shared start state of all three chains)
+def recs(run):
+    R = []
+    for f in sorted(glob.glob(f'{run}/prof/prof_aq-[0-9][0-9][0-9].txt')):
+        h = open(f).readline().split(); a = np.loadtxt(f, skiprows=1, ndmin=2)
+        R.append({k: a[:, i] for i, k in enumerate(h)})
+    return [r for r in R if 0 < r['time'][0] <= tflood + 1e-6]
+S0 = sorted(glob.glob(f'{P}/flood_v25c_ref_y*s'), key=lambda r: int(r.rsplit('_y', 1)[1][:-1]))
+y0 = recs(S0[-1]) if S0 else []
+with open(OUT.replace('.csv', '_year0.csv'), 'w', newline='') as fo:
+    w = csv.writer(fo); w.writerow(['run', 'time_end_flood_yr', 'ph_end_flood_0_20'])
+    if y0:
+        c = y0[-1]; z = c['z']; dz = np.gradient(z); m = z < 0.2
+        w.writerow([os.path.basename(S0[-1]), f"{c['time'][0]:.5f}", f"{np.sum(c['ph'][m]*dz[m])/np.sum(dz[m]):.4f}"])
+# year-10 depth profiles of pH at the end of flooding
+with open(OUT.replace('.csv', '_profile_y10.csv'), 'w', newline='') as fo:
+    w = csv.writer(fo); w.writerow(['dose_t_ha', 'time_yr', 'z_m', 'ph'])
+    for d in ('0', '10', '20'):
+        R = recs(f'{P}/flood_v25bb_ref_{d}_y10s')
+        if R:
+            c = R[-1]
+            for zz, ph in zip(c['z'], c['ph']): w.writerow([d, f"{c['time'][0]:.5f}", f'{zz:.4f}', f'{ph:.4f}'])
+print('wrote', OUT, len(rows), 'rows;', SUM, '; year0 from', S0[-1] if S0 else 'NONE')
 print(open(SUM).read())
