@@ -8,8 +8,9 @@
 #   all  the three together
 # Each perturbation run is differenced against the background run with the same climate configuration, so the
 # reported dT, dERF and concentration changes are free of the background's own trajectory.
-# Climate: --calib=<dir> uses the fair-calibrate constrained ensemble (calibrated_constrained_parameters.csv and
-#   species_configs_properties.csv from Zenodo; Smith et al. 2024), giving the 5-95% range. Without it, one central
+# Climate: --calib=<dir> uses the fair-calibrate constrained ensemble (calibrated_constrained_parameters*.csv and
+#   species_configs_properties*.csv; v1.4.1, 841 members, from the FaIR repo examples/data/calibrated_constrained_ensemble;
+#   Smith et al. 2024), giving the 5-95% range. Without it, one central
 #   AR6-like configuration is used (for testing the pipeline only).
 # Usage: python3 fair_ew.py <perturbations.csv> <out prefix> [--ssp=ssp245] [--end=2200] [--calib=<dir>] [--nmax=0]
 #   perturbations.csv: year, dch4_mt, dn2o_mt, dco2_gt (missing years = 0)
@@ -39,10 +40,13 @@ def main(pert_f, prefix):
     ssp, end = opt('ssp', 'ssp245'), int(opt('end', 2200))
     calib, nmax = opt('calib'), int(opt('nmax', 0))
     if calib:
-        species, props = read_properties(os.path.join(calib, 'species_configs_properties.csv'))
-        par = pd.read_csv(os.path.join(calib, 'calibrated_constrained_parameters.csv'), index_col=0)
+        import glob
+        sf = sorted(glob.glob(os.path.join(calib, 'species_configs_properties*.csv')))[-1]
+        pf = sorted(glob.glob(os.path.join(calib, 'calibrated_constrained_parameters*.csv')))[-1]
+        species, props = read_properties(sf)
+        par = pd.read_csv(pf, index_col=0)
         if nmax: par = par.iloc[:nmax]
-        configs = list(par.index.astype(str))
+        configs = list(par.index)
     else:
         species, props = read_properties(); configs = ['central']
     b = background(ssp, end, species, props)
@@ -60,7 +64,9 @@ def main(pert_f, prefix):
             if col in p:
                 f.emissions.loc[dict(scenario=c, specie=SPEC[col])] += p[col].values[:, None]
     if calib:
-        f.override_defaults(os.path.join(calib, 'calibrated_constrained_parameters.csv'))
+        if nmax:
+            pf = f'{prefix}_params_n{nmax}.csv'; par.to_csv(pf)
+        f.fill_species_configs(sf); f.override_defaults(pf)
     else:
         f.fill_species_configs()
         fill(f.climate_configs['ocean_heat_capacity'], [8, 14, 100])
