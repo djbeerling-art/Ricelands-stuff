@@ -31,9 +31,9 @@ def run(d):
             sfh=fh/D; sh=sfh/(sfh+gt)
             sorb=g(hs,s,ad); dis=g(ha,a,sp)*1e3*th   # mol/m3 bulk
             r[sp+'_dis']=(dis*m).sum()*dz; r[sp+'_fh']=(sorb*sh*m).sum()*dz; r[sp+'_gt']=(sorb*(1-sh)*m).sum()*dz
-            r[sp+'_conc']=(g(ha,a,sp)*m).mean()
-            r[sp+'_Kfh']=(K*sfh/(1e3*th)*m).mean(); r[sp+'_Kgt']=(K*gt/(1e3*th)*m).mean()  # dimensionless sorbed/dissolved
-        r['si']=(g(ha,a,'si')*m).mean(); r['ph']=(g(ha,a,'ph')*m).mean()
+            r[sp+'_conc']=g(ha,a,sp)[m].mean()
+            r[sp+'_Kfh']=(K*sfh/(1e3*th))[m].mean(); r[sp+'_Kgt']=(K*gt/(1e3*th))[m].mean()  # dimensionless sorbed/dissolved
+        r['si']=g(ha,a,'si')[m].mean(); r['ph']=g(ha,a,'ph')[m].mean()
         rows.append(r)
     return rows
 res={}

@@ -13,6 +13,7 @@
 #   FE3   ferrihydrite (amfe3, wt fraction; ~0.4, 1.2, 3% = 45, 135, 340 mmol Fe/kg; oxalate Fe in S&F 2012: 54-537)
 #   GT    goethite (wt fraction), the Si-insensitive As pool (0.02 sites per mol Fe; DCB - oxalate Fe)
 #   ALK   --irralk (irrigation alkalinity factor; 0 = acid, 1 = reference, 5 = alkaline groundwater) -> initial pH
+# SOILX (environment) appends soil options to every run, e.g. "--soilcc=0.02" for a calcareous soil.
 # Arsenic (fixed): labile soil As AS_SOIL mg/kg, irrigation As AS_IRR ug/L (Bengal-type groundwater), 90% As(III).
 set -u
 idx=${1:-all}; NSET=${2:-5}; NCH=${3:-3}; DOSE=${4:-20}
@@ -29,7 +30,7 @@ run_soil(){
   local i=$1
   local f=${FE3[$((i/9))]} g=${GT[$(((i/3)%3))]} a=${ALK[$((i%3))]}
   local tag=as_f${f}_g${g}_a${a}
-  local S="--fe3=$f --gt=$g --irralk=$a --as=$AS_SOIL:$AS_IRR:0.1 --exe=$EXE"
+  local S="--fe3=$f --gt=$g --irralk=$a --as=$AS_SOIL:$AS_IRR:0.1 --exe=$EXE ${SOILX:-}"
   # 1. drained spin-up, 3 yr
   grep -q "^${tag}_spin rc 0" $ST 2>/dev/null || {
     python3 paddy/run_flooded_column.py ${tag}_spin fe2o2,amo2o,as3sp,as5sp,as5rd,as3ox,as5ra,as3oa 3 --fallow --basalt=0 $SOIL $P21 $S \

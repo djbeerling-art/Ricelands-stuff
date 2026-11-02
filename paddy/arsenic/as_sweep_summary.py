@@ -12,31 +12,62 @@ Diagnostics (basalt B vs control C, root zone 0-ZROOT m, root-density weighted e
   budget    per run (mol As m-2, As(III)+As(V)): percolating irrigation input (rain.in concs x q x t), net transport
             gain (-(adv+dif) x t: percolation input + floodwater exchange (irrigation-renewed floodwater, lateral
             discharge) - drainage at the base), plant uptake, change in sorbed and dissolved inventory, closure residual
+  f_fh, q   ferrihydrite-capacity predictor (equilibrium, linear sorption, conserved exchangeable As(III)):
+            Kd_fh, Kd_gt = sorbed/dissolved As(III) on ferrihydrite / goethite sites (as3sp equation, root-weighted
+            time means); f_fh = Kd_fh/(Kd_fh+Kd_gt) in the control; q = Kd_fh,C/Kd_fh,B (Si and pH), q_Si = Si part only;
+            R_As_fq = 1/((1-f_fh) + f_fh/q); R_As_cap = (1+Kd_C)/(1+Kd_B) (also carries the goethite pH term)
+  R_inv     exchangeable As(III) inventory (dissolved + sorbed) B/C; at local equilibrium R_As = R_inv x R_cap, so
+            R_inv carries what the predictor leaves out (As(V) reduction, As(III) oxidation, transport, uptake)
   class     'suppress' / 'mobilise' if every uptake estimate (Ki 150/300/600 and simulated) is below / above 1;
             'uncertain (uptake parameters)' if they disagree: uptake-parameter uncertainty only, not Fe sorption,
             As(V) reduction or grain partitioning
   grain iAs not modelled yet (translocation, Lsi1/Lsi2 regulation, node sequestration) -> empty
-Usage: python3 paddy/arsenic/as_sweep_summary.py <SCEPTER_OUT>/paddy [dose] > as_sweep_summary.csv
+Usage: python3 paddy/arsenic/as_sweep_summary.py <SCEPTER_OUT>/paddy [dose | si] > as_sweep_summary.csv
+       ('si': silica-only test of run_si_test.sh, control _sc vs silica _ss)
 """
 import sys, os, glob, re, csv
 import numpy as np
 _trap = getattr(np, "trapezoid", None) or getattr(np, "trapz")
 
 root = sys.argv[1]; dose = sys.argv[2] if len(sys.argv) > 2 else '20'
+ARMC, ARMB = ('sc', 'ss') if dose == 'si' else ('d0', f'd{dose}')
 ZROOT, ZR = 0.2, 0.1
 KIS = (150.0, 300.0, 600.0)
 
+A3 = (5.1882, -0.0224, -0.0171, 3.8028, 0.0104, 0.8685)   # as3sp constants (kd_constants.json)
+
+def profs(run, kind):
+    """(header, array) per output time; a header that does not match its columns (fused names) takes its neighbour's"""
+    out = []
+    for f in sorted(glob.glob(os.path.join(run, 'prof', f'{kind}-[0-9]*.txt'))):
+        out.append([open(f).readline().split(), np.atleast_2d(np.loadtxt(f, skiprows=1))])
+    for o in out:   # fused names (5-character fields, as till.py): split by width
+        if len(o[0]) != o[1].shape[1]:
+            hd = ' '.join(o[0]); raw = open(glob.glob(os.path.join(run, 'prof', f'{kind}-[0-9]*.txt'))[0]).readline().rstrip()
+            o[0] = ['z'] + [raw[4+5*i:9+5*i].strip() for i in range((len(raw)-4)//5)]
+    return out
+
+def sites(run):
+    try: v = [float(x) for x in open(os.path.join(run, 'as_sites.in')).read().split()]
+    except OSError: v = []
+    return (v[0] if v else 1.0), (v[1] if len(v) > 1 else 0.02)
+
 def series(run):
-    """time-resolved root-weighted As(III), Si (M) and pH over the root zone"""
-    fs = sorted(glob.glob(os.path.join(run, 'prof', 'prof_aq-[0-9]*.txt')))
-    t, a3, si, ph, z, w = [], [], [], [], None, None
-    for f in fs:
-        h = open(f).readline().split(); a = np.atleast_2d(np.loadtxt(f, skiprows=1))
-        if z is None:
-            z = a[:, 0]; w = np.exp(-z/ZR)*(z <= ZROOT); w = w/w.sum()
-        t.append(a[0, h.index('time')]); a3.append(a[:, h.index('as3')]); si.append(a[:, h.index('si')]); ph.append(a[:, h.index('ph')])
-    if not t: return None
-    return dict(t=np.array(t), as3=np.array(a3), si=np.array(si), ph=np.array(ph), w=w)
+    """time-resolved As(III), Si (M), pH and As(III) Kd on ferrihydrite and goethite sites over the root zone"""
+    aq, sl, bs = profs(run, 'prof_aq'), profs(run, 'prof_sld'), profs(run, 'bsd')
+    if not aq: return None
+    fs, fg = sites(run); a, b, c, aS, bS, n = A3
+    z = aq[0][1][:, 0]; w = np.exp(-z/ZR)*(z <= ZROOT); w = w/w.sum()
+    o = {k: [] for k in ('t', 'as3', 'si', 'ph', 'kfh', 'kgt', 'dsi', 'inv3')}
+    for (h, x), (hs, s), (hb, bb) in zip(aq, sl, bs):
+        g = lambda hh, xx, k: xx[:, hh.index(k)]
+        ph, si = g(h, x, 'ph'), g(h, x, 'si'); pc, sc = np.clip(ph, 5, 8) - 7, np.clip(si, 2e-5, 2e-3)
+        K = 10**(a + b*pc + c*pc*pc); D = 1 + 10**(aS + bS*pc)*sc**n; th = 1e3*g(hb, bb, 'poro')*g(hb, bb, 'sat')
+        o['t'].append(x[0, h.index('time')]); o['as3'].append(g(h, x, 'as3')); o['si'].append(si); o['ph'].append(ph)
+        o['kfh'].append(K*fs*0.2*g(hs, s, 'amfe3')/D/th); o['kgt'].append(K*fg*g(hs, s, 'gt')/th if 'gt' in hs else 0*K)
+        o['dsi'].append(D); o['inv3'].append(g(h, x, 'as3')*th + g(hs, s, 'as3ad'))   # exchangeable As(III), mol m-3
+    o = {k: np.array(v) for k, v in o.items()}; o['w'] = w
+    return o
 
 def tint(s, x):
     """time integral (trapezoid) of a root-weighted profile quantity x[t, z]"""
@@ -67,16 +98,16 @@ def budget(run):
 
 w = csv.writer(sys.stdout)
 cols = ['soil', 'fe3_wt', 'gt_wt', 'irralk', 'year', 'pH_C', 'dpH', 'Si_C_uM', 'R_Si', 'As3_C_uM', 'R_As', 'T',
-        'R_up_Ki150', 'R_up_Ki300', 'R_up_Ki600', 'R_up_sim', 'log10R_As_eff', 'log10T_eff', 'log10R_up', 'class',
+        'R_up_Ki150', 'R_up_Ki300', 'R_up_Ki600', 'R_up_sim', 'f_fh', 'q', 'q_Si', 'R_As_fq', 'R_As_cap', 'R_inv', 'log10R_As_eff', 'log10T_eff', 'log10R_up', 'class',
         'grain_iAs_ratio']
 for tr in ('C', 'B'):
     cols += [f'{tr}_{k}_molm2' for k in ('input_perc', 'net_transport_gain', 'uptake', 'd_sorbed', 'd_dissolved', 'residual')]
 w.writerow(cols)
-for d0 in sorted(glob.glob(os.path.join(root, 'flood_as_f*_d0_y*s'))):
-    m = re.search(r'flood_(as_f([\d.]+)_g([\d.]+)_a([\d.]+))_d0_y(\d+)s$', d0)
+for d0 in sorted(glob.glob(os.path.join(root, f'flood_as_f*_{ARMC}_y*s'))):
+    m = re.search(rf'flood_(as_f([\d.]+)_g([\d.]+)_a([\d.]+))_{ARMC}_y(\d+)s$', d0)
     if not m: continue
     tag, f, g, a, y = m.groups()
-    db = os.path.join(root, f'flood_{tag}_d{dose}_y{y}s')
+    db = os.path.join(root, f'flood_{tag}_{ARMB}_y{y}s')
     if not os.path.isdir(db): continue
     c, b = series(d0), series(db)
     if c is None or b is None: continue
@@ -84,6 +115,9 @@ for d0 in sorted(glob.glob(os.path.join(root, 'flood_as_f*_d0_y*s'))):
     ra = mean(b, b['as3'])/mean(c, c['as3']); T = (1 + sb*1e6/300)/(1 + sc*1e6/300)
     rup = {ki: tint(b, b['as3']/(1 + b['si']*1e6/ki))/tint(c, c['as3']/(1 + c['si']*1e6/ki)) for ki in KIS}
     ra_eff = tint(b, b['as3'])/tint(c, c['as3']); t_eff = ra_eff/rup[300.0]
+    kfc, kgc, kfb, kgb = mean(c, c['kfh']), mean(c, c['kgt']), mean(b, b['kfh']), mean(b, b['kgt'])
+    f_fh = kfc/(kfc + kgc); q = kfc/kfb; q_si = mean(b, b['dsi'])/mean(c, c['dsi'])
+    r_fq = 1/((1 - f_fh) + f_fh/q); r_cap = (1 + kfc + kgc)/(1 + kfb + kgb)
     bc, bb = budget(d0), budget(db)
     us = bb.get('uptake', np.nan)/bc['uptake'] if bc.get('uptake') else np.nan
     est = list(rup.values()) + ([us] if np.isfinite(us) else [])
@@ -91,6 +125,7 @@ for d0 in sorted(glob.glob(os.path.join(root, 'flood_as_f*_d0_y*s'))):
     row = [tag, f, g, a, y, round(mean(c, c['ph']), 2), round(mean(b, b['ph']) - mean(c, c['ph']), 2), round(sc*1e6),
            round(sb/sc, 2), '%.4g' % (mean(c, c['as3'])*1e6), round(ra, 3), round(T, 3),
            *[round(rup[k], 3) for k in KIS], round(us, 3) if np.isfinite(us) else '',
+           round(f_fh, 3), round(q, 3), round(q_si, 3), round(r_fq, 3), round(r_cap, 3), round(mean(b, b['inv3'])/mean(c, c['inv3']), 3),
            round(np.log10(ra_eff), 3), round(np.log10(t_eff), 3), round(np.log10(rup[300.0]), 3), cls, '']
     for bd in (bc, bb):
         row += ['%.4g' % bd.get(k, np.nan) for k in ('input_perc', 'net_transport_gain', 'uptake', 'd_sorbed', 'd_dissolved', 'residual')]

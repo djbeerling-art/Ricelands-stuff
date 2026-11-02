@@ -88,21 +88,60 @@ Setup: reference soil with 3 wt% amfe3 and 6 mg/kg labile As. Reactions: `fe2o2,
 ## Goethite x silica test (2 Nov 2026)
 
 Fresh 0.3 m columns, 1.2 wt% ferrihydrite, 10 mg/kg As, 100 ug/L irrigation As, 0.12 yr flooded. Goethite 0, 2 and
-6 wt%, each without and with silica gel (`--amsi=0.077 --kscale=amsi:30`), so Si rises about 7x (147 to 1045 uM) with
+6 wt%, each without and with silica gel (`--amsi=0.077 --kscale=amsi:30`), so Si rises about 7x (220 to 1570 uM) with
 no pH change. All six runs start from the same porewater As (0.80 uM As(III), 0.09 uM As(V)). Root zone 0-0.2 m,
 time means over the run (`paddy/arsenic/gt_si_partition.py`).
 
 | Goethite | As(III) control (uM) | As(III) +Si (uM) | Absolute change (uM) | R_As | R_As predicted from Kd | Ferrihydrite share of As(III) capacity |
 |---|---|---|---|---|---|---|
-| 0 | 0.054 | 0.259 | +0.205 | 4.78 | 4.86 | 0.995 |
-| 2% | 0.030 | 0.049 | +0.019 | 1.64 | 1.70 | 0.51 |
-| 6% | 0.017 | 0.021 | +0.004 | 1.22 | 1.27 | 0.26 |
+| 0 | 0.081 | 0.388 | +0.307 | 4.78 | 4.86 | 0.995 |
+| 2% | 0.045 | 0.074 | +0.029 | 1.64 | 1.70 | 0.51 |
+| 6% | 0.025 | 0.031 | +0.006 | 1.22 | 1.27 | 0.26 |
 
 - Si cuts the ferrihydrite Kd for As(III) about 5x (1230 to 250). The goethite Kd changes by less than 1%. Goethite is a genuinely Si-insensitive pool.
 - R_As is set by the ferrihydrite share of sorption capacity, phi: R_As = 1/(1 - phi(1 - 1/D)), D about 5. Total Fe is not the control.
 - Sorbed As(III) moves from ferrihydrite to goethite sites with Si (end of run, mmol m-2): at 2% goethite 14.9/14.3 to 5.0/24.0; at 6% 7.6/22.0 to 1.9/27.5; without goethite 28.8/0.1 to 28.1/0.7.
 - That split is diagnostic. The model holds one sorbed pool per As species at the competitive equilibrium of both site types, so the transfer is instantaneous by construction. A kinetic or irreversible transfer needs separate tracked pools.
-- Root-zone pH is about 5.05 in these runs, at the bottom of the fitted range. As(III) sorption and its Si competition depend little on pH (b = -0.02, bS = 0.01), so the pattern should carry over.
+- Root-zone pH is about 7.6 in these runs (fresh `--refsoil` columns), inside the fitted range. A first version of the script averaged the 0-0.2 m mask over the whole column and reported pH 5.05 and Si and As(III) two-thirds too low; ratios and inventories were unaffected.
+
+## Ferrihydrite-capacity predictor and silica test from settled soils (2 Nov 2026)
+
+Predictor (David Beerling): if Si cuts the ferrihydrite Kd by q and goethite is unaffected, R_As = 1/((1-f) + f/q),
+f = ferrihydrite share of sorption capacity in the control. It assumes linear equilibrium sorption and a conserved
+exchangeable As inventory. `as_sweep_summary.py` now reports f_fh, q, q_Si, R_As_fq, R_As_cap and R_inv (exchangeable
+As(III) inventory, dissolved + sorbed, B/C) from the model's own time-resolved Kd values.
+
+Test: `paddy/arsenic/run_si_test.sh` (spin-up, 2 settle years, then one season + fallow from the settled state with and
+without 7.7 wt% silica gel in the plough layer; `add_silica.py`). 1.2% ferrihydrite; goethite 0.5, 2 and 6%;
+irrigation alkalinity 1 and 5, and alkalinity 5 with 2% soil calcite (`SOILX=--soilcc=0.02`). Silica raised Si about
+4.9x (240 to 1170 uM) with no pH change. Summary: `python3 paddy/arsenic/as_sweep_summary.py <out>/paddy si`.
+
+| Soil | Season pH | f | q | R_As (model) | R_As f/q rule | R_inv | log10(R_As / rule) |
+|---|---|---|---|---|---|---|---|
+| gt 0.5%, alk 1 | 6.44 | 0.86 | 3.87 | 1.92 | 2.73 | 0.83 | -0.15 |
+| gt 2%, alk 1 | 6.46 | 0.60 | 3.84 | 1.29 | 1.80 | 0.84 | -0.15 |
+| gt 6%, alk 1 | 6.46 | 0.32 | 3.81 | 1.01 | 1.31 | 0.84 | -0.11 |
+| gt 0.5%, alk 5 | 6.57 | 0.86 | 3.84 | 1.88 | 2.74 | 0.84 | -0.16 |
+| gt 2%, alk 5 | 6.59 | 0.60 | 3.82 | 1.27 | 1.80 | 0.85 | -0.15 |
+| gt 6%, alk 5 | 6.59 | 0.32 | 3.79 | 1.01 | 1.31 | 0.85 | -0.11 |
+| gt 0.5%, alk 5, 2% calcite | 6.70 | 0.86 | 3.78 | 1.85 | 2.74 | 0.84 | -0.17 |
+| gt 2%, alk 5, 2% calcite | 6.71 | 0.60 | 3.75 | 1.25 | 1.78 | 0.85 | -0.15 |
+
+(The calcareous 6% goethite soil failed in its second settle year and was not rerun.)
+
+- The rule orders the soils correctly and carries the goethite effect, but over-predicts the seasonal R_As by 30-45%
+  (0.11-0.17 log units, least where f is small).
+- About half of the gap is the inventory assumption: with Si the exchangeable As(III) inventory in the root zone falls
+  15-17% in every soil, because desorbed dissolved As(III) is oxidised (`as3ox` +78% in the 2% goethite soil). The rest is
+  depth and time variation in Kd and Si (silica dissolves near the surface): per date, R_inv x rule still exceeds R_As
+  by 7-20%.
+- pH: settled flooded seasons converge to pH 6.4-6.7 whatever the irrigation alkalinity or 2% calcite, and the results
+  barely move over that range (q 3.87 to 3.75, R_As within 4%). The fresh columns (pH 7.6) gave the same dependence on f.
+  Settled seasons at pH 7-7.5 were not reached with these settings.
+- As(V): dissolved As(V) is about 8% of As(III) over the season and Si raises it about 10%, so the pH sensitivity of
+  As(V) sorption has little leverage on exposure here.
+- Silica alone raises Si about 5x with no alkalinisation; T = 2.74 exceeds R_As in every soil, so all are 'suppress'
+  (competitive uptake ratio 0.32-0.62).
 
 ## Next
 
