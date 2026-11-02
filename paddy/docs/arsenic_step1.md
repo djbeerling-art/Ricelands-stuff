@@ -77,6 +77,14 @@ Setup: reference soil with 3 wt% amfe3 and 6 mg/kg labile As. Reactions: `fe2o2,
 - Plugging the basalt run into the competitive uptake ratio (Si Km 300 µM) gives 4.0 × (1 + 266/300)/(1 + 1333/300) = 1.39. That is a 39% rise in As(III) uptake.
 - This is a smoke test, not a prediction. There was no spin-up, the basalt pH is above the fitted range, and the redox constants are uncalibrated.
 
+## Calibration and response-map tools (2 Nov 2026)
+
+- **Si-insensitive sites on goethite.** `as3sp` and `as5sp` add f_gt sites per mol goethite Fe (`gt`) to krxn2. f_gt defaults to 0.02 and is the second value in `as_sites.in`, set with `--assite=<f>:<fgt>`. Crystalline Fe (dithionite minus oxalate) is therefore the soil input for the Si-insensitive pool.
+- **Pot tests.** Seyfferth & Fendorf 2012 Richvale and Hawi pots, run at the SI values (oxalate Fe, DCB Fe, As spike), give absolute porewater As(III) within about 3× without fitting. The digitised Fig. 1 is in `paddy/arsenic/seyfferth2012_fig1_digitised.csv`. Two problems remain: silica gel dissolves too slowly unless amsi is scaled (production uses `--kscale=...,amsi:30`), and `--refsoil` irrigation gives too high a pH for these pots.
+- **Threshold test** (`paddy/arsenic/threshold_table.py`). It compares the porewater As ratio with the Si-inhibition threshold T = (1+Si_trt/Ki)/(1+Si_ctrl/Ki) at Ki = 300 µM. The grain As direction is right in 12 of 15 treatments. Steel slag (He 2020), the basalt analogue, lies above the threshold. Richvale silica gel lies on the threshold but grain As fell, which points to Si effects beyond competition.
+- **Response-map sweep** (`paddy/arsenic/run_as_sweep.sh`). 27 soils (ferrihydrite × goethite × irrigation alkalinity) each get a spin-up, a settle, then control and 20 t/ha basalt chains. `as3up` runs in the season only (`XRSS` in `run_chain.sh`). `paddy/arsenic/as_sweep_summary.py` reports pH, Si, As(III), R_As, T, the competitive and simulated uptake ratios, and the class (suppress, mobilise or uncertain). Grain iAs is left empty until translocation is modelled.
+- **Smoke test.** One soil (1.2% ferrihydrite, 2% goethite, reference irrigation; 1 settle year, 1 chain year) ran end to end. Basalt raised Si 7× but As(III) only 1.27×, against a threshold of 4.2. The uptake ratio was 0.26 simulated and 0.30 competitive, so the class is suppress. The goethite pool dominates As retention in this soil.
+
 ## Next
 
 1. Calibrate `f_site`, `Sx` and the redox constants against porewater As time series. Candidates are Seyfferth & Fendorf 2012, He 2020 and Limmer 2020.
