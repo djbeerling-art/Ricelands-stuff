@@ -98,14 +98,15 @@
 #   -9.98, Bourrie et al. 1999): the pH-stat sets porewater Fe2+ = 10^(log K + 2 pH).
 # --kaol=<wt fraction> puts kaolinite in the soil (spin-ups only; restarts inherit it). Without it secondary Al phases
 #   must nucleate from a 1e-20 seed, so porewater Al builds up and stalls plagioclase dissolution for weeks.
-# --as=<mg/kg>[:<ug/L>[:<f5>]] (arsenic branch, Step 1) tracks trace As: dissolved As(III)/As(V) (as3, as5), As sorbed on
+# --as=<mg/kg>[:<ug/L>[:<f5>[:<f3soil>]]] (arsenic branch, Step 1) tracks trace As: dissolved As(III)/As(V) (as3, as5), As sorbed on
 #   ferrihydrite (as3ad, as5ad) and the reactions as3sp, as5sp (Si-competitive sorption), as5rd (As(V) reduction) and
 #   as3ox (As(III) oxidation by O2), as5ra/as3oa (the same for sorbed As). <mg/kg> is the labile (oxide-bound) soil As, put in as sorbed As(V) (oxidised soil before
-#   flooding); <ug/L> is irrigation-water As (default 0), with As(V) fraction <f5> (default 0.1; groundwater As is mostly As(III)).
+#   flooding; <f3soil> puts that fraction in as As(III), e.g. for As(III)-spiked pots); <ug/L> is irrigation-water As (default 0), with As(V) fraction <f5> (default 0.1; groundwater As is mostly As(III)).
 #   List as3up with siup in the reactions for Si-competitive As(III) uptake by rice (placeholder constants).
 # --asx=<mol/m3> Si-insensitive As sorption sites (crystalline Fe oxides, clays, OM; soil-specific, default 0), written to
 #   krxn_ext.in as krxn2 of as3sp and as5sp.
-# --assite=<f> fraction of ferrihydrite weak sites available to As (as_sites.in; default 1 = fresh ferrihydrite).
+# --assite=<f>[:<fgt>] fraction of ferrihydrite weak sites available to As (default 1 = fresh ferrihydrite) and As sites
+#   per mol goethite Fe, the Si-insensitive crystalline pool (default 0.02) (as_sites.in). Goethite comes from --gt.
 # Output goes to $SCEPTER_OUT (default ./scepter_output/) under paddy/flood_<tag>.
 import os,sys,shutil
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -123,6 +124,7 @@ if arsenic:
     as_soil = float(_w[0])                                        # labile soil As, mg/kg
     as_irr  = float(_w[1])*1e-6/74.9216 if len(_w) > 1 else 0.0   # irrigation As, mol/L
     as_f5   = float(_w[2]) if len(_w) > 2 else 0.1
+    as_s3   = float(_w[3]) if len(_w) > 3 else 0.0                # As(III) fraction of the initial soil As
     for r in ('as3sp','as5sp','as5rd','as3ox','as5ra','as3oa'):
         if r not in rxns: rxns.append(r)
 if any(a.startswith('--n2oy=') for a in sys.argv[1:]) and 'g2n21' in rxns and 'g2n0' not in rxns: rxns.append('g2n0')
@@ -166,7 +168,7 @@ cec    = float(opt.get('cec', 15 if ref else 10))   # cmol/kg; --cec overrides
 soilcc = float(opt.get('soilcc',0))   # --soilcc: soil calcite, wt fraction (calcareous paddies)
 tsoil  = float(opt.get('temp',25))    # --temp: soil temperature, deg C (constant)
 irralk = float(opt.get('irralk',1))   # --irralk: scales the alkalinity (0.2 meq/L) of the --refsoil irrigation water via Cl-; 0 = no alkalinity
-amsiwt = 0.01 if ref else 0            # amorphous (phytolith) silica, wt fraction
+amsiwt = float(opt.get('amsi', 0.01 if ref else 0))   # amorphous (phytolith) silica, wt fraction; --amsi overrides (e.g. silica-gel pots)
 # urea [g m-2 yr-1] as a fraction of the OM input [g C m-2 yr-1]; applied at a constant rate over the season (later
 # in the year fert_temp.in switches it off)
 urea_frac = nfert/10*60.056/28.014/0.31/omin
@@ -193,7 +195,7 @@ if os.path.exists(os.path.join(rundir,'krxn_ext.in')): os.remove(os.path.join(ru
 if 'k' in opt: shutil.copy(opt['k'],os.path.join(rundir,'krxn_ext.in'))
 if os.path.exists(os.path.join(rundir,'as_sites.in')): os.remove(os.path.join(rundir,'as_sites.in'))
 if 'assite' in opt:
-    with open(os.path.join(rundir,'as_sites.in'),'w') as f: f.write('fraction of ferrihydrite sites available to As\n%s\n' % opt['assite'])
+    with open(os.path.join(rundir,'as_sites.in'),'w') as f: f.write('fraction of ferrihydrite sites available to As, As sites per mol goethite Fe\n%s\n' % opt['assite'].replace(':',' '))
 if 'asx' in opt:
     _kf = os.path.join(rundir,'krxn_ext.in')
     _new = not os.path.exists(_kf)
@@ -307,7 +309,7 @@ spinup.run_a_scepter_run(
     gas_list=['pco2','po2'] + (['pch4'] if ch4 else []) + (['pnh3','pn2o'] if nitro else []),
     exrxn_list=rxns,
     # ---- boundary values ----
-    pr_list=[('inrt',1-fe3wt-kaol-amsiwt-gtwt-soilcc),('amfe3',fe3wt)] + ([('gt',gtwt)] if gtwt > 0 else []) + ([('ka',kaol)] if kaol > 0 else []) + ([('amsi',amsiwt)] if amsiwt > 0 else []) + ([('cc',soilcc)] if soilcc > 0 else []) + ([('as5ad',as_soil*1e-6),('as3ad',as_soil*1e-9)] if arsenic else []),
+    pr_list=[('inrt',1-fe3wt-kaol-amsiwt-gtwt-soilcc),('amfe3',fe3wt)] + ([('gt',gtwt)] if gtwt > 0 else []) + ([('ka',kaol)] if kaol > 0 else []) + ([('amsi',amsiwt)] if amsiwt > 0 else []) + ([('cc',soilcc)] if soilcc > 0 else []) + ([('as5ad',max(as_soil*1e-6*(1-as_s3),as_soil*1e-9)),('as3ad',max(as_soil*1e-6*as_s3,as_soil*1e-9))] if arsenic else []),
     # rain inputs are free (primary) species with -Drain_input_as_primary:
     # free Fe3+ must be near Fe(OH)3 equilibrium, otherwise hydrolysis makes total Fe(III) huge
     # --refsoil: river-type irrigation water (Ca 0.5, Mg 0.2, Na 0.3, K 0.05, Si 0.2, SO4 0.2, Cl 1.15 mM), pH ~7.6 at

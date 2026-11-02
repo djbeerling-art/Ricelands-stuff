@@ -2132,10 +2132,12 @@ staq_dext_all(findloc(chrrxn_ext_all,'as3sp',dim=1), findloc(chraq_all,'as3',dim
 staq_dext_all(findloc(chrrxn_ext_all,'as3sp',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 stsld_dext_all(findloc(chrrxn_ext_all,'as3sp',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = 1d0
 stsld_dext_all(findloc(chrrxn_ext_all,'as3sp',dim=1), findloc(chrsld_all,'as3ad',dim=1)) = 1d0
+stsld_dext_all(findloc(chrrxn_ext_all,'as3sp',dim=1), findloc(chrsld_all,'gt',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'as5sp',dim=1), findloc(chraq_all,'as5',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'as5sp',dim=1), findloc(chraq_all,'si',dim=1)) = 1d0
 stsld_dext_all(findloc(chrrxn_ext_all,'as5sp',dim=1), findloc(chrsld_all,'amfe3',dim=1)) = 1d0
 stsld_dext_all(findloc(chrrxn_ext_all,'as5sp',dim=1), findloc(chrsld_all,'as5ad',dim=1)) = 1d0
+stsld_dext_all(findloc(chrrxn_ext_all,'as5sp',dim=1), findloc(chrsld_all,'gt',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'as5rd',dim=1), findloc(chraq_all,'as5',dim=1)) = 1d0
 stgas_dext_all(findloc(chrrxn_ext_all,'as5rd',dim=1), findloc(chrgas_all,'po2',dim=1)) = 1d0
 staq_dext_all(findloc(chrrxn_ext_all,'as3ox',dim=1), findloc(chraq_all,'as3',dim=1)) = 1d0
@@ -10481,6 +10483,32 @@ if (.not. read_done) then
 endif 
 fs = fs_save
 endfunction as_fsite_f
+function as_fgt_f() result(fg)
+! As sorption sites per mol goethite Fe (Si-insensitive pool of as3sp/as5sp): 0.02 (~2.3 sites/nm2 at ~50 m2/g,
+! Dixit and Hering 2003), or the second value on the data line of ./as_sites.in, read once.
+implicit none
+real(kind=8)::fg
+real(kind=8),save::fg_save = 0.02d0
+logical,save::read_done = .false.
+logical::exist_file
+integer::ios
+real(kind=8)::v1,v2
+if (.not. read_done) then 
+    read_done = .true.
+    inquire(file='./as_sites.in',exist=exist_file)
+    if (exist_file) then 
+        open(982,file='./as_sites.in',status='old',action='read')
+        read(982,'()')
+        read(982,*,iostat=ios) v1,v2
+        close(982)
+        if (ios == 0) then 
+            fg_save = v2
+            print *,'As sites per mol goethite Fe: ',fg_save
+        endif 
+    endif 
+endif 
+fg = fg_save
+endfunction as_fgt_f
 !**************************************************************************************************************************************
 function o2inh_f() result(ki)
 ! O2 inhibition constant (mol L-1) of the anaerobic pathways (denitrification steps, Fe(III), SO42- reduction,
@@ -22166,7 +22194,7 @@ real(kind=8),dimension(nz):: po2x,vmax,mo2,fe2x,koxa,vmax2,mom2,komb,beta,omx,om
     & ,no3x,pn2ox,dv_dph_tmp,fe2f,dfe2f_dfe2,dfe2f_dpco2,dfe2f_dpro,dfe2f_dso4f,pco2x,hrpy,oxax &
     & ,vmax_tmp,z_dum,amfe3x,so4x,pch4x,f_g2,f_ea,f_o2,f_no3,f_so4,f_fe3,f_sat,grx,fe2fr,lnomg,f_gr,gtx,fe2adx,sfr,sad &
     & ,fesx,hsfr,f_ph,df_ph,six,f_si,df_si,f_cb,df_cb,f_rb,df_rb
-real(kind=8),dimension(nz):: asx,asadx,phx,dphc,logk_as,dlogk_as,ksi_as,sie_as,dsie_as,dsi_as,geq_as,sfh_as 
+real(kind=8),dimension(nz):: asx,asadx,phx,dphc,logk_as,dlogk_as,ksi_as,sie_as,dsie_as,dsi_as,geq_as,sfh_as,sx_as 
 real(kind=8):: as_a,as_b,as_c,as_as,as_bs,as_n
 #ifdef cache_spec
 real(kind=8),dimension(:),allocatable,save::profte,dprofte_dpro,dprofte_dios,profti,dprofti_dpro,dprofti_dios
@@ -23598,7 +23626,8 @@ select case(trim(adjustl(rxn_name)))
         ! Fe(III) 0.02-0.23 mol/L porewater (paddy/docs/arsenic_step1.md; fit RMSE 3% As(III), 12% As(V)):
         !   sorbed(eq) = c * K * ( 0.2 amfe3 / (1 + KSi si^n) + Sx )       [mol m^-3, c in mol L^-1]
         !   log K = a + b (pH-7) + c (pH-7)^2 ;  log KSi = aS + bS (pH-7)
-        ! Sx (krxn2) = Si-insensitive sites (mol m^-3, soil-specific), given the Si-free affinity K. pH and Si are clamped to
+        ! Sx = Si-insensitive sites (mol m^-3), given the Si-free affinity K: krxn2 (clays, OM; soil-specific) plus
+        ! f_gt sites per mol goethite Fe (gt; default 0.02, ~2.3 sites/nm2 at ~50 m2/g; second value in ./as_sites.in). pH and Si are clamped to
         ! the fitted range. Rate = krxn1 * (sorbed(eq) - sorbed), so sorbed As follows amfe3 as it is reductively dissolved.
         ! Si sorption itself is not taken out of solution (Si is set by the porewater balance). The weak-site density can be
         ! scaled by the factor in ./as_sites.in (default 1: fresh ferrihydrite, 600 m2/g), for aged or organically coated oxide.
@@ -23612,7 +23641,8 @@ select case(trim(adjustl(rxn_name)))
             asadx = msldx_loc(findloc(chrsld_all,'as5ad',dim=1),:)
         endif 
         v_tmp = krxn1_ext_all(findloc(chrrxn_ext_all,rxn_name,dim=1),1) ! yr^-1 
-        km_tmp1 = krxn2_ext_all(findloc(chrrxn_ext_all,rxn_name,dim=1),1) ! Si-insensitive sites, mol m^-3 
+        ! Si-insensitive sites, mol m^-3: krxn2 (clays, OM) + sites on goethite (crystalline Fe(III) oxide, gt)
+        sx_as = krxn2_ext_all(findloc(chrrxn_ext_all,rxn_name,dim=1),1) + as_fgt_f()*max(gtx,0d0)
         six = maqx_loc(findloc(chraq_all,'si',dim=1),:)
         phx = -log10(prox) - 7d0
         dphc = merge(1d0,0d0,(phx > -2d0) .and. (phx < 1d0)) ! pH clamped to 5-8
@@ -23624,7 +23654,7 @@ select case(trim(adjustl(rxn_name)))
         dsi_as   = merge(1d0,0d0,(six > 2d-5) .and. (six < 2d-3))
         dsie_as  = 1d0 + ksi_as*sie_as**as_n ! Si competition denominator
         sfh_as   = 0.2d0*as_fsite_f()*max(amfe3x,0d0) ! ferrihydrite weak sites available to As, mol m^-3
-        geq_as   = asx*10d0**logk_as*( sfh_as/dsie_as + km_tmp1 )
+        geq_as   = asx*10d0**logk_as*( sfh_as/dsie_as + sx_as )
         f_sat = min(2d0*sat,1d0)
         rxn_ext = v_tmp*f_sat*( geq_as - asadx )
         
@@ -23632,7 +23662,7 @@ select case(trim(adjustl(rxn_name)))
             case('as3','as5')
                 if ( (trim(adjustl(rxn_name))=='as3sp' .and. trim(adjustl(sp_name))=='as3') &
                     & .or. (trim(adjustl(rxn_name))=='as5sp' .and. trim(adjustl(sp_name))=='as5') ) then 
-                    drxnext_dmsp = v_tmp*f_sat*10d0**logk_as*( sfh_as/dsie_as + km_tmp1 )
+                    drxnext_dmsp = v_tmp*f_sat*10d0**logk_as*( sfh_as/dsie_as + sx_as )
                 else 
                     drxnext_dmsp = 0d0
                 endif 
@@ -23645,6 +23675,8 @@ select case(trim(adjustl(rxn_name)))
                 endif 
             case('amfe3')
                 drxnext_dmsp = v_tmp*f_sat*asx*10d0**logk_as*0.2d0*as_fsite_f()/dsie_as*merge(1d0,0d0,amfe3x > 0d0)
+            case('gt')
+                drxnext_dmsp = v_tmp*f_sat*asx*10d0**logk_as*as_fgt_f()*merge(1d0,0d0,gtx > 0d0)
             case('si')
                 drxnext_dmsp = -v_tmp*f_sat*asx*10d0**logk_as*sfh_as/dsie_as**2d0 &
                     & *ksi_as*as_n*sie_as**(as_n-1d0)*dsi_as
