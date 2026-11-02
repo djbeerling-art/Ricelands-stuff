@@ -85,6 +85,25 @@ Setup: reference soil with 3 wt% amfe3 and 6 mg/kg labile As. Reactions: `fe2o2,
 - **Response-map sweep** (`paddy/arsenic/run_as_sweep.sh`). 27 soils (ferrihydrite × goethite × irrigation alkalinity) each get a spin-up, a settle, then control and 20 t/ha basalt chains. `as3up` runs in the season only (`XRSS` in `run_chain.sh`). `paddy/arsenic/as_sweep_summary.py` reports pH, Si, As(III), R_As, T, the competitive and simulated uptake ratios, and the class (suppress, mobilise or uncertain). Grain iAs is left empty until translocation is modelled.
 - **Smoke test.** One soil (1.2% ferrihydrite, 2% goethite, reference irrigation; 1 settle year, 1 chain year) ran end to end. Basalt raised Si 7× but As(III) only 1.27×, against a threshold of 4.2. The uptake ratio was 0.26 simulated and 0.30 competitive, so the class is suppress. The goethite pool dominates As retention in this soil.
 
+## Goethite x silica test (2 Nov 2026)
+
+Fresh 0.3 m columns, 1.2 wt% ferrihydrite, 10 mg/kg As, 100 ug/L irrigation As, 0.12 yr flooded. Goethite 0, 2 and
+6 wt%, each without and with silica gel (`--amsi=0.077 --kscale=amsi:30`), so Si rises about 7x (147 to 1045 uM) with
+no pH change. All six runs start from the same porewater As (0.80 uM As(III), 0.09 uM As(V)). Root zone 0-0.2 m,
+time means over the run (`paddy/arsenic/gt_si_partition.py`).
+
+| Goethite | As(III) control (uM) | As(III) +Si (uM) | Absolute change (uM) | R_As | R_As predicted from Kd | Ferrihydrite share of As(III) capacity |
+|---|---|---|---|---|---|---|
+| 0 | 0.054 | 0.259 | +0.205 | 4.78 | 4.86 | 0.995 |
+| 2% | 0.030 | 0.049 | +0.019 | 1.64 | 1.70 | 0.51 |
+| 6% | 0.017 | 0.021 | +0.004 | 1.22 | 1.27 | 0.26 |
+
+- Si cuts the ferrihydrite Kd for As(III) about 5x (1230 to 250). The goethite Kd changes by less than 1%. Goethite is a genuinely Si-insensitive pool.
+- R_As is set by the ferrihydrite share of sorption capacity, phi: R_As = 1/(1 - phi(1 - 1/D)), D about 5. Total Fe is not the control.
+- Sorbed As(III) moves from ferrihydrite to goethite sites with Si (end of run, mmol m-2): at 2% goethite 14.9/14.3 to 5.0/24.0; at 6% 7.6/22.0 to 1.9/27.5; without goethite 28.8/0.1 to 28.1/0.7.
+- That split is diagnostic. The model holds one sorbed pool per As species at the competitive equilibrium of both site types, so the transfer is instantaneous by construction. A kinetic or irreversible transfer needs separate tracked pools.
+- Root-zone pH is about 5.05 in these runs, at the bottom of the fitted range. As(III) sorption and its Si competition depend little on pH (b = -0.02, bS = 0.01), so the pattern should carry over.
+
 ## Next
 
 1. Calibrate `f_site`, `Sx` and the redox constants against porewater As time series. Candidates are Seyfferth & Fendorf 2012, He 2020 and Limmer 2020.
