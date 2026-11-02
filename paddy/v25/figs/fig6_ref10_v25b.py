@@ -12,12 +12,13 @@ fig, ax = plt.subplots(2, 2, figsize=(7.6, 6.6)); ax = ax.ravel()
 for a, dose in zip(ax[:2], (10, 20)):
     R = json.load(open(f'../results/timeline_ref{dose}.json')); y = np.array([r['y'] for r in R])
     cat = np.cumsum([r['cat'] for r in R]); pda = np.cumsum([r['pda'] for r in R])
-    cc = np.minimum(np.cumsum([r['cc'] for r in R]), np.maximum(cat - pda, 0))
-    pda = np.maximum(pda, 0); cc = np.maximum(cc, 0); ret = cat - pda - cc
+    # Eq. 17 equivalent basis: calcite C capped at half the unexported charge, drawn as charge (2 eq per mol)
+    cc = np.minimum(np.cumsum([r['cc'] for r in R]), 0.5*np.maximum(cat - pda, 0))
+    pda = np.maximum(pda, 0); cc = 2*np.maximum(cc, 0); ret = cat - pda - cc
     a.stackplot(y, pda, cc, ret, colors=[C['pda'], C['cc'], C['ret']], edgecolor='white', lw=.6)
     a.plot(y, cat, c=C['cat'], lw=1.6)
     a.text(0.03, 0.97, f"line: cation release\n{cat[-1]:.0f} t CO$_2$ ha$^{{-1}}$ by year 10", transform=a.transAxes, ha='left', va='top', fontsize=8)
-    for v, b, l in ((pda[-1], 0, 'PDA'), (cc[-1], pda[-1], 'calcite'), (ret[-1], pda[-1] + cc[-1], 'retained')):
+    for v, b, l in ((pda[-1], 0, 'PDA'), (cc[-1], pda[-1], 'calcite (charge)'), (ret[-1], pda[-1] + cc[-1], 'retained')):
         a.annotate(f'{l}\n{v:.1f}', (y[-1], b + v/2), xytext=(4, 0), textcoords='offset points', va='center', fontsize=7.5, linespacing=.9)
     a.set_xlim(1, 12.6); a.set_xticks(range(1, 11)); a.set_xlabel('Year'); a.set_ylabel('Cumulative (t CO$_2$ ha$^{-1}$)')
     a.set_title(f"{'ab'[dose//20]}  {dose} t ha$^{{-1}}$ yr$^{{-1}}$: cumulative cation fate", loc='left', fontsize=9)
@@ -36,8 +37,8 @@ for a in ax:
     a.grid(c='#ecebe7', lw=.6); a.set_axisbelow(True)
     if a is not ax[0] and a is not ax[1]: a.set_xlim(0.5, 10.5); a.set_xticks(range(1, 11))
 fig.legend([Patch(color=C[k]) for k in ('pda', 'cc', 'ret')],
-           ['Potentially durable alkalinity exported at the base (PDA = ALK − 2Fe(II) − 2NH$_4^+$)',
-            'Soil carbonate (calcite; counted only up to cations not exported)',
-            'Retained cations (exchange sites, porewater): potential only'], loc='lower center', ncol=1, frameon=False, fontsize=8)
+           ['Potentially durable alkalinity exported at the base and by lateral discharge (PDA = ALK − 2Fe(II) − 2NH$_4^+$)',
+            'Soil carbonate (calcite, 2 eq per mol; calcite C capped at half the unexported charge)',
+            'Retained cations (exchange sites, porewater): potential only'], loc='lower center', ncol=1, frameon=False, fontsize=7.5)
 fig.text(0.995, 0.005, 'SCEPTER-paddy v25b', ha='right', va='bottom', fontsize=6.5, color='#888')
 fig.tight_layout(rect=(0, 0.1, 1, 1), h_pad=1.4, w_pad=1.2); fig.savefig('fig6_ref10_v25b.png')
