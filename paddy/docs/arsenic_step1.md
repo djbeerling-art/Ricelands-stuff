@@ -170,6 +170,22 @@ Two corrected predictors will be scored against the basalt sweep without refitti
 Score: RMSE of log10 R_As and the share of soils whose uptake class (with T) is unchanged, against the uncorrected rule.
 Basalt adds pH, Fe and redox effects the silica runs lack, so this is an out-of-sample test.
 
+## Grain residual structure (15 treatments, `paddy/arsenic/grain_residuals.py`)
+
+Residual = log10(observed grain ratio) - log10(competitive uptake ratio, Ki 300 uM). No global fit; descriptive only.
+
+- Overall: mean +0.01, sd 0.17 log10 (about a factor of 1.5). No bias by growth-stage window, porewater As species
+  (As(III) vs total) or grain As species (iAs vs total).
+- By treatment: Si gel -0.10 (grain fell more than competition predicts; n = 4), Si-rich amendments 0.00 (n = 6), slag
+  -0.05 (n = 2), diatomite +0.23 (n = 3; little Si, porewater As near detection, grain rose in two of three).
+- Against porewater Si: Spearman rho -0.31 (p 0.27). The sign fits Si down-regulation of uptake at high Si, but 15
+  treatments cannot resolve it.
+- Grain vs straw (n = 10): grain fell less than straw in 8 of 10 (log10 grain - straw +0.13 median); slag is the
+  exception (both rose together). Si cuts shoot As more than grain As, so grain is partly buffered from the uptake change
+  (remobilisation or node partitioning), the place to add OsABCC1 sequestration separately.
+- Across all 15, log10 grain = 0.53 x log10 predicted uptake - 0.04 (r 0.69). Grain moves about half as much as predicted
+  uptake in log terms; part of that is attenuation from noisy porewater data, so treat 0.5 as a lower bound on the slope.
+
 ## Next
 
 1. Calibrate `f_site`, `Sx` and the redox constants against porewater As time series. Candidates are Seyfferth & Fendorf 2012, He 2020 and Limmer 2020.
