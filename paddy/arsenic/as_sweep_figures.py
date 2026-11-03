@@ -31,16 +31,18 @@ def response_map(y):
             if float(r['irralk']) != a: continue
             i, j = GT.index(float(r['gt_wt'])), FE.index(float(r['fe3_wt']))
             Z[i, j] = np.log10(F(r, 'R_up_Ki300')); U[i, j] = r['class'].startswith('uncertain')
-        im = ax.imshow(Z, origin='lower', cmap='RdBu_r', norm=norm)
+        cm = plt.get_cmap('RdBu_r').copy(); cm.set_bad('#d0d7de')
+        im = ax.imshow(np.ma.masked_invalid(Z), origin='lower', cmap=cm, norm=norm)
         for i in range(len(GT)):
             for j in range(len(FE)):
                 if np.isfinite(Z[i, j]):
                     ax.text(j, i, f'{10**Z[i, j]:.2f}', ha='center', va='center', color=INK if abs(Z[i, j]) < 0.6*lim else 'white', fontsize=8)
+                else: ax.text(j, i, 'pending', ha='center', va='center', color=MUTED, fontsize=7)
                 if U[i, j]: ax.add_patch(plt.Rectangle((j-.5, i-.5), 1, 1, fill=False, ec=INK, lw=1.5, ls='--'))
         ax.set_xticks(range(len(FE)), [f'{100*x:g}' for x in FE]); ax.set_yticks(range(len(GT)), [f'{100*x:g}' for x in GT])
         ax.set_xlabel('ferrihydrite (wt%)'); ax.set_ylabel('goethite (wt%)'); ax.set_title(f'irrigation alkalinity x{a:g}', color=INK)
     cb = fig.colorbar(im, ax=axs[0].tolist(), shrink=0.8); cb.set_label('log10 As(III) uptake ratio (basalt/control)')
-    fig.suptitle(f'Year {y}: blue = uptake suppressed, red = raised; R = 1 at white; dashed = uptake-parameter uncertainty', fontsize=9, color=INK)
+    fig.suptitle(f'Year {y}: blue = uptake suppressed, red = raised; R = 1 at white; grey = run pending; dashed = uptake-parameter uncertainty', fontsize=9, color=INK)
     fig.savefig(os.path.join(out, f'response_map_y{y}.png'), dpi=200); plt.close(fig)
 
 def decomposition(y):
