@@ -37,15 +37,26 @@ KIS = (150.0, 300.0, 600.0)
 A3 = (5.1882, -0.0224, -0.0171, 3.8028, 0.0104, 0.8685)   # as3sp constants (kd_constants.json)
 
 def profs(run, kind):
-    """(header, array) per output time; a header that does not match its columns (fused names) takes its neighbour's"""
+    """(header, array) per output time. Some files have fused header names (fixed-width fields run together): such a
+    file takes the header of another file of the same kind whose names match its columns, else its own line split at
+    the field width that gives the right number of names."""
     out = []
     for f in sorted(glob.glob(os.path.join(run, 'prof', f'{kind}-[0-9]*.txt'))):
-        out.append([open(f).readline().split(), np.atleast_2d(np.loadtxt(f, skiprows=1))])
-    for o in out:   # fused names (5-character fields, as till.py): split by width
-        if len(o[0]) != o[1].shape[1]:
-            hd = ' '.join(o[0]); raw = open(glob.glob(os.path.join(run, 'prof', f'{kind}-[0-9]*.txt'))[0]).readline().rstrip()
-            o[0] = ['z'] + [raw[4+5*i:9+5*i].strip() for i in range((len(raw)-4)//5)]
-    return out
+        raw = open(f).readline().rstrip('\n')
+        try: a = np.atleast_2d(np.loadtxt(f, skiprows=1))
+        except ValueError: continue
+        if a.size == 0: continue
+        out.append([raw.split(), a, raw])
+    good = [o[0] for o in out if len(o[0]) == o[1].shape[1]]
+    for o in out:
+        if len(o[0]) == o[1].shape[1]: continue
+        nc = o[1].shape[1]; cand = [h for h in good if len(h) == nc]
+        if cand: o[0] = cand[0]; continue
+        st = o[2].index('z') + 2                         # fields start after 'z ' (till.py: 4, width 5)
+        for wd in (5, 6, 7, 8):
+            h = ['z'] + [o[2][st+wd*i:st+wd*(i+1)].strip() for i in range((len(o[2].rstrip()) - st + wd - 1)//wd)]
+            if len(h) == nc and h[-1] == 'time': o[0] = h; break
+    return [(h, a) for h, a, _ in out if len(h) == a.shape[1]]
 
 def sites(run):
     try: v = [float(x) for x in open(os.path.join(run, 'as_sites.in')).read().split()]
@@ -53,19 +64,26 @@ def sites(run):
     return (v[0] if v else 1.0), (v[1] if len(v) > 1 else 0.02)
 
 def series(run):
-    """time-resolved As(III), Si (M), pH and As(III) Kd on ferrihydrite and goethite sites over the root zone"""
+    """time-resolved As(III), Si (M), pH and As(III) Kd on ferrihydrite and goethite sites over the root zone; Kd and
+    inventory are NaN where the solid profiles were pruned (earlier chain years keep porewater only, KEEPPH)"""
     aq, sl, bs = profs(run, 'prof_aq'), profs(run, 'prof_sld'), profs(run, 'bsd')
-    if not aq: return None
+    if len(aq) < 3: return None
+    full = len(sl) == len(aq) == len(bs)
     fs, fg = sites(run); a, b, c, aS, bS, n = A3
     z = aq[0][1][:, 0]; w = np.exp(-z/ZR)*(z <= ZROOT); w = w/w.sum()
     o = {k: [] for k in ('t', 'as3', 'si', 'ph', 'kfh', 'kgt', 'dsi', 'inv3')}
-    for (h, x), (hs, s), (hb, bb) in zip(aq, sl, bs):
+    for i, (h, x) in enumerate(aq):
         g = lambda hh, xx, k: xx[:, hh.index(k)]
         ph, si = g(h, x, 'ph'), g(h, x, 'si'); pc, sc = np.clip(ph, 5, 8) - 7, np.clip(si, 2e-5, 2e-3)
-        K = 10**(a + b*pc + c*pc*pc); D = 1 + 10**(aS + bS*pc)*sc**n; th = 1e3*g(hb, bb, 'poro')*g(hb, bb, 'sat')
-        o['t'].append(x[0, h.index('time')]); o['as3'].append(g(h, x, 'as3')); o['si'].append(si); o['ph'].append(ph)
-        o['kfh'].append(K*fs*0.2*g(hs, s, 'amfe3')/D/th); o['kgt'].append(K*fg*g(hs, s, 'gt')/th if 'gt' in hs else 0*K)
-        o['dsi'].append(D); o['inv3'].append(g(h, x, 'as3')*th + g(hs, s, 'as3ad'))   # exchangeable As(III), mol m-3
+        K = 10**(a + b*pc + c*pc*pc); D = 1 + 10**(aS + bS*pc)*sc**n
+        o['t'].append(x[0, h.index('time')]); o['as3'].append(g(h, x, 'as3')); o['si'].append(si); o['ph'].append(ph); o['dsi'].append(D)
+        if full:
+            (hs, s), (hb, bb) = sl[i], bs[i]
+            th = 1e3*g(hb, bb, 'poro')*g(hb, bb, 'sat')
+            o['kfh'].append(K*fs*0.2*g(hs, s, 'amfe3')/D/th); o['kgt'].append(K*fg*g(hs, s, 'gt')/th if 'gt' in hs else 0*K)
+            o['inv3'].append(g(h, x, 'as3')*th + g(hs, s, 'as3ad'))   # exchangeable As(III), mol m-3
+        else:
+            for k in ('kfh', 'kgt', 'inv3'): o[k].append(np.full_like(ph, np.nan))
     o = {k: np.array(v) for k, v in o.items()}; o['w'] = w
     return o
 
@@ -79,7 +97,10 @@ def mean(s, x): return tint(s, x)/(s['t'][-1] - s['t'][0]) if len(s['t']) > 1 el
 def intflx(run, name):
     f = os.path.join(run, 'flx', f'int_flx_{name}.txt')
     if not os.path.exists(f): return None
-    h = open(f).readline().split(); a = np.atleast_2d(np.loadtxt(f, skiprows=1))
+    h = open(f).readline().split()
+    try: a = np.atleast_2d(np.loadtxt(f, skiprows=1))
+    except ValueError: return None
+    if a.size == 0 or a.shape[1] != len(h): return None
     return {k: a[-1, i]*a[-1, 0] for i, k in enumerate(h) if k != 'time'}   # time-averaged rate x time = total
 
 def budget(run):
@@ -110,7 +131,8 @@ for d0 in sorted(glob.glob(os.path.join(root, f'flood_as_f*_{ARMC}_y*s'))):
     db = os.path.join(root, f'flood_{tag}_{ARMB}_y{y}s')
     if not os.path.isdir(db): continue
     c, b = series(d0), series(db)
-    if c is None or b is None: continue
+    if c is None or b is None:
+        print(f'# skipped {os.path.basename(d0)} / {os.path.basename(db)}: incomplete porewater profiles', file=sys.stderr); continue
     sc, sb = mean(c, c['si']), mean(b, b['si'])
     ra = mean(b, b['as3'])/mean(c, c['as3']); T = (1 + sb*1e6/300)/(1 + sc*1e6/300)
     rup = {ki: tint(b, b['as3']/(1 + b['si']*1e6/ki))/tint(c, c['as3']/(1 + c['si']*1e6/ki)) for ki in KIS}
@@ -119,13 +141,14 @@ for d0 in sorted(glob.glob(os.path.join(root, f'flood_as_f*_{ARMC}_y*s'))):
     f_fh = kfc/(kfc + kgc); q = kfc/kfb; q_si = mean(b, b['dsi'])/mean(c, c['dsi'])
     r_fq = 1/((1 - f_fh) + f_fh/q); r_cap = (1 + kfc + kgc)/(1 + kfb + kgb)
     bc, bb = budget(d0), budget(db)
+    nr = lambda v, k=3: '' if not np.isfinite(v) else round(v, k)
     us = bb.get('uptake', np.nan)/bc['uptake'] if bc.get('uptake') else np.nan
     est = list(rup.values()) + ([us] if np.isfinite(us) else [])
     cls = 'suppress' if max(est) < 1 else ('mobilise' if min(est) > 1 else 'uncertain (uptake parameters)')
     row = [tag, f, g, a, y, round(mean(c, c['ph']), 2), round(mean(b, b['ph']) - mean(c, c['ph']), 2), round(sc*1e6),
            round(sb/sc, 2), '%.4g' % (mean(c, c['as3'])*1e6), round(ra, 3), round(T, 3),
            *[round(rup[k], 3) for k in KIS], round(us, 3) if np.isfinite(us) else '',
-           round(f_fh, 3), round(q, 3), round(q_si, 3), round(r_fq, 3), round(r_cap, 3), round(mean(b, b['inv3'])/mean(c, c['inv3']), 3),
+           nr(f_fh), nr(q), round(q_si, 3), nr(r_fq), nr(r_cap), nr(mean(b, b['inv3'])/mean(c, c['inv3'])),
            round(np.log10(ra_eff), 3), round(np.log10(t_eff), 3), round(np.log10(rup[300.0]), 3), cls, '']
     for bd in (bc, bb):
         row += ['%.4g' % bd.get(k, np.nan) for k in ('input_perc', 'net_transport_gain', 'uptake', 'd_sorbed', 'd_dissolved', 'residual')]
