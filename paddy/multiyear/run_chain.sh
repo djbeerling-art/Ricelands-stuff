@@ -17,8 +17,17 @@ RS=fe2o2,g2fe3,g2gr,g2so4,g2ch4,ch4o2,fe2gr,ch4pl,ch4eb,fe2fs,fesox,amo2o,g2n21,
 RF=fe2o2,g2fe3,g2gr,g2so4,g2ch4,ch4o2,fe2gr,ch4eb,fe2fs,fesox,amo2o,g2n21,g2n2p,g2gt,g2o2,groxy,sidox${XRS:-}
 C="--ch4 --n --kaol=0.05 --refsoil --gt=0.02 --nz=15 --exe=scepter_paddy_fast --nucl=cc:0.001 --kscale=maf:0.45,fsp:0.25"
 ok(){ grep -q "^$1 rc 0" "$st" 2>/dev/null; }
+# Transient climate (paddy/global/transient_clim.py): if the --clim file has per-year siblings <stem>_y<N>.csv, chain
+# year y uses <stem>_y<y+CLIM_YOFF>.csv (clamped to the available years); otherwise --clim is used unchanged.
+CLIM0=$(printf '%s\n' "$@" | grep '^--clim=' | tail -1 | cut -d= -f2)
+CLIMN=0; [ -n "$CLIM0" ] && [ -f "${CLIM0%.csv}_y1.csv" ] && CLIMN=$(ls ${CLIM0%.csv}_y*.csv | wc -l)
+ARGS0=("$@")
 for y in $(seq 1 $ny); do
   ts=${name}_y${y}s; tf=${name}_y${y}f
+  if [ $CLIMN -gt 0 ]; then
+    k=$(( y + ${CLIM_YOFF:-0} )); [ $k -lt 1 ] && k=1; [ $k -gt $CLIMN ] && k=$CLIMN
+    set -- $(printf '%s\n' "${ARGS0[@]}" | sed "s#^--clim=.*#--clim=${CLIM0%.csv}_y$k.csv#")
+  fi
   if ! ok $ts; then
     # puddling before transplanting mixes the plough layer (TILL = depth in m, default 0.16; 0 = no tillage)
     [ "${TILL:-0.16}" != 0 ] && python3 paddy/multiyear/till.py $SCEPTER_OUT/paddy/flood_$prev ${TILL:-0.16}

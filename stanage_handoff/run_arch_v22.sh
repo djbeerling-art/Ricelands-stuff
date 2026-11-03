@@ -19,7 +19,7 @@ if [ -n "${BASE_OUT:-}" ]; then
   RS=${RESETTLE:-3}; b=$SCEPTER_OUT/paddy/flood_bs22_$a
   if ! ok st22_${a}_y${RS}f; then
     [ -d $b ] || cp -a $BASE_OUT/paddy/flood_st22_${a}_set $b || { echo "bs22_$a rc 97 (no baseline state)" >> "$ST"; exit 1; }
-    paddy/multiyear/run_chain.sh st22_$a $RS 0 bs22_$a "$ST" $PROD $P21 $args $(kaq) || exit 1
+    CLIM_YOFF=-$RS paddy/multiyear/run_chain.sh st22_$a $RS 0 bs22_$a "$ST" $PROD $P21 $args $(kaq) || exit 1   # transient climate: re-settle under year 1
     rm -rf $b
   fi
   for y in $(seq 1 $((RS-1))); do rm -rf $SCEPTER_OUT/paddy/flood_st22_${a}_y${y}[sf]; done
