@@ -273,7 +273,7 @@ rock_min = [m for m in bas_min if m not in ('amfe3','inrt')] if bas else []
 #   stand for a lower reactive surface area of rock dust under flooding; <mineral>:<factor> overrides one mineral and
 #   fsp:<factor> / maf:<factor> all feldspars / mafic silicates (fit to Uchibayashi et al. 2025: --kscale=maf:0.45,fsp:0.25)
 kcls_fsp = ['ab','an','la','by','and','olg','kfs','sdn','leu']
-kcls_maf = ['agt','dp','fo','fa','en','fs','mgn','tm','ep','clch','hb','cpx','opx']
+kcls_maf = ['agt','dp','fo','fa','en','fs','fer','mgn','tm','ep','clch','hb','cpx','opx']
 if os.path.exists(os.path.join(rundir,'kinscale.in')): os.remove(os.path.join(rundir,'kinscale.in'))
 if 'kscale' in opt and (rock_min or ':' in opt['kscale']):
     ks = opt['kscale'].split(',')
