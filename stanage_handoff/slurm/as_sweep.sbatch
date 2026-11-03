@@ -2,7 +2,7 @@
 # Arsenic response sweep: one array task per soil (27). From the repo root on the arsenic branch:
 #   git fetch origin && git checkout claude/arsenic-sorption && git pull
 #   module load GCC OpenBLAS; make --file=makefile_paddy_fast
-#   python3 -m pip install --user numpy      # once: compute nodes have no numpy otherwise
+#   module load Python/3.11.3-GCCcore-12.3.0 && python3 -m pip install --user numpy   # once, if numpy is missing
 #   mkdir -p logs status && sbatch --array=0-26 stanage_handoff/slurm/as_sweep.sbatch
 # When all tasks finish:
 #   python3 paddy/arsenic/as_sweep_summary.py $SCEPTER_OUT/paddy > as_sweep_summary.csv
@@ -14,8 +14,8 @@
 #SBATCH --partition=sheffield
 #SBATCH --account=default
 #SBATCH --output=logs/as_sweep_%A_%a.out
-module load GCC OpenBLAS 2>/dev/null
+module load GCC/12.3.0 OpenBLAS/0.3.23-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0 2>/dev/null || module load GCC OpenBLAS Python
 export SCEPTER_OUT=${SCEPTER_OUT:-/mnt/parscratch/users/$USER/scepter_as/}
 mkdir -p $SCEPTER_OUT/paddy logs status
-python3 -c 'import numpy' || { echo 'numpy missing: python3 -m pip install --user numpy' >&2; exit 1; }
+python3 -c 'import numpy' || { echo 'numpy missing: module load Python/3.11.3-GCCcore-12.3.0; python3 -m pip install --user numpy' >&2; exit 1; }
 ST=status/as_sweep_$SLURM_ARRAY_TASK_ID.txt bash paddy/arsenic/run_as_sweep.sh $SLURM_ARRAY_TASK_ID ${NSET:-5} ${NCH:-3} ${DOSE:-20}
