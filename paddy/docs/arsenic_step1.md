@@ -202,6 +202,15 @@ Year 3, 20 t/ha basalt, all 27 soils (soils 11, 17 and 20 rerun after intermitte
   grid, so no soil here is near the boundary.
 - Years 1-2 are pruned to porewater only (KEEPPH); the year 1 vs 3 comparison needs the flux-based uptake ratio.
 
+### Year 1 vs 3 and grain iAs (3 Nov 2026)
+
+- Year by year (`as_sweep_years.py`, from the as3up fluxes kept in pruned years): uptake ratio 0.17-0.54 in year 1,
+  0.14-0.51 in year 3; it falls from year 1 to 3 in all 27 soils (median -11%). Suppression strengthens with time.
+- Grain (`grain_from_uptake.py`): log10 grain = -0.037 + 0.53 log10 uptake (15 published treatments, r 0.69) gives a
+  grain iAs ratio of 0.32-0.64 across the 27 soils (36-68% lower), bootstrap 5-95% range 0.21-0.76. The fitted line comes
+  from Si amendments, not basalt, and the slope is attenuated by noisy porewater data; grain following uptake one-for-one
+  (0.14-0.51) is the other bound.
+
 ## Next
 
 1. Calibrate `f_site`, `Sx` and the redox constants against porewater As time series. Candidates are Seyfferth & Fendorf 2012, He 2020 and Limmer 2020.
