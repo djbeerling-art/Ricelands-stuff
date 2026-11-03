@@ -43,7 +43,8 @@
 #   Magnetite is not allowed to precipitate (data/2ndslds_paddy.in): it would take over from green rust and lock up
 #   reducible soil Fe(III).
 # --cec=<cmol/kg>, --soilcc=<wt fraction> (soil calcite), --temp=<deg C>, --irralk=<factor> (alkalinity of the
-#   --refsoil irrigation water, 0.2 meq/L at 1, adjusted through Cl- up to 5, then as Ca(HCO3)2; 0 gives pH ~5.6 water)
+#   --refsoil irrigation water, 0.2 meq/L at 1, adjusted through Cl- up to 5, then as Ca(HCO3)2; 0 gives pH ~5.6 water),
+#   --irrsi=<mM> (irrigation-water dissolved Si; default 0.2 with --refsoil, else 0.1)
 #   set up site-specific soils.
 # --refsoil (with --basalt=0 or a dose, so Si is tracked): reference paddy soil with CEC 15 cmol/kg, 1 wt% phytolith
 #   (amorphous) silica and river-type irrigation water (with Cl-), so porewater Ca, Mg and Si reach typical paddy levels.
@@ -169,6 +170,7 @@ soilcc = float(opt.get('soilcc',0))   # --soilcc: soil calcite, wt fraction (cal
 tsoil  = float(opt.get('temp',25))    # --temp: soil temperature, deg C (constant)
 irralk = float(opt.get('irralk',1))   # --irralk: scales the alkalinity (0.2 meq/L) of the --refsoil irrigation water via Cl-; 0 = no alkalinity
 amsiwt = float(opt.get('amsi', 0.01 if ref else 0))   # amorphous (phytolith) silica, wt fraction; --amsi overrides (e.g. silica-gel pots)
+irrsi  = float(opt.get('irrsi', 0.2 if ref else 0.1))*1e-3   # --irrsi: irrigation-water Si, mM (sets baseline porewater Si)
 # urea [g m-2 yr-1] as a fraction of the OM input [g C m-2 yr-1]; applied at a constant rate over the season (later
 # in the year fert_temp.in switches it off)
 urea_frac = nfert/10*60.056/28.014/0.31/omin
@@ -315,7 +317,7 @@ spinup.run_a_scepter_run(
     # --refsoil: river-type irrigation water (Ca 0.5, Mg 0.2, Na 0.3, K 0.05, Si 0.2, SO4 0.2, Cl 1.15 mM), pH ~7.6 at
     # atmospheric pCO2; free Fe3+ and Al3+ lowered to near Fe(OH)3 and gibbsite equilibrium at that pH
     rain_list=[('ca',(5e-4+max(irralk-5,0)*1e-4 if ref else 2.05e-4) if ch4 else 5e-6),('fe3',1e-27 if ref else 1e-21),('fe2',1e-10)]
-        + ([('si',2e-4 if ref else 1e-4),('al',1e-15 if ref else 1e-12)] if bas else [])
+        + ([('si',irrsi),('al',1e-15 if ref else 1e-12)] if bas else [])
         + ([('mg',2e-4),('na',3e-4),('k',5e-5),('cl',1.15e-3+(1-min(irralk,5))*2e-4)] if ref else [('mg',2e-6),('na',1e-5),('k',2e-6)] if fe2buf else [])
         + ([('so4',2e-4),('hs',1e-12)] if ch4 else []) + ([('no3',1e-6)] if nitro else [])
         + ([('as3',max(as_irr*(1-as_f5),1e-15)),('as5',max(as_irr*as_f5,1e-15))] if arsenic else []),  # irrigation water ~0.2 mM SO42-, balanced by Ca above
