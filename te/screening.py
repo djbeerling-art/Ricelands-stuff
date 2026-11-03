@@ -13,8 +13,11 @@ results (same rock, soil, dose and years).
    Leaching fractions per year (Tyler 1978, pH 4.2, 1000 mm): Ni 0.166,
    Cu 0.049, Cr 0.026, Zn 0.098. Other metals are not given by Dupla
    (default 0, i.e. conservative); crop export as mg/kg soil per year (Table 1).
-2. Full-release mixing screen: all TE in the applied rock is released
-   instantly and stays in the mixing layer (no leaching, no crop export):
+2. ERW-MAC (Olagaray et al., ERW Metal Accumulation Calculator, preprint),
+   Eq. 1: all TE in the applied rock is released instantly and stays in the
+   mixing layer (no leaching, no crop export, homogeneous mixing). ERW-MAC
+   samples soil depth U(0.05, 0.3) m and bulk density N(1250, 250) truncated
+   to 800-1700 kg/m3, basalt cumulative doses 25-125 t/ha:
        C_final = C_soil0 + C_rock * app_rate * n_app / (depth * BD).
 
 All concentrations are mg/kg (total, aqua-regia-like). Doses in t/ha.
@@ -91,8 +94,8 @@ def dupla(c_rock, c_soil0, dose_t_ha_yr, years, *, scenario='minimal', leach=0.0
     return out
 
 
-def full_release(c_rock, c_soil0, dose_t_ha, n_app, *, depth=0.2, bd=1250.0):
-    """Instant full release, no losses: total TE (mg/kg) after n_app events."""
+def erw_mac(c_rock, c_soil0, dose_t_ha, n_app, *, depth=0.2, bd=1250.0):
+    """ERW-MAC Eq. 1, instant full release, no losses: total TE (mg/kg)."""
     return c_soil0 + c_rock * dose_t_ha * 0.1 * n_app / (depth * bd)
 
 
@@ -100,3 +103,6 @@ def years_to_limit(series, limit):
     """First year (1-based) at which a yearly series exceeds limit, or None."""
     i = np.nonzero(np.asarray(series) > limit)[0]
     return int(i[0]) + 1 if len(i) else None
+
+
+full_release = erw_mac   # generic alias
