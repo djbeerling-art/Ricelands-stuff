@@ -88,6 +88,11 @@ Next steps:
    run (study in project files) gives labile Ni 0.9x, Zn 0.8x, Cd 1.0x after 3 yr, with Cu and Pb
    falling too far (no SOM binding yet), and pH rising ~0.4 vs the observed 0.15-0.24.
    SCEPTER control runs with dose 0 stall in the PSD solver: use the spin-up state instead.
+   With site-matched feedstocks (upland.py ROCKS/PSD 'pioneer', 'blueridge'; studies in project
+   files): Vermont 3 yr gives pH +0.1 and all labile metals 0.9-1.0x (field: no change). Corn
+   Belt 4 x 50 t/ha gives labile Ni 0.51x (field ~0.55x), Cd and Pb falling (field: fall), but Cu
+   0.15x (field: no change -> SOM) and pH +1.1 (no N fertiliser acidity in the spin-up).
+   Not yet in: the feedstock's own exchangeable Ca (Pioneer Valley ECEC 50 meq/100 g).
 3. Per-soil Hfo site densities from Fe-oxide content: ~0.6 mol Fe/kgw if 1.5% Fe oxide were all ferrihydrite at
    field moisture, far above the 1 mmol used in the tests, so sorption will dominate over
    exchange in most soils.
