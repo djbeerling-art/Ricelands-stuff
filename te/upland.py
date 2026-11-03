@@ -16,7 +16,12 @@ def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
                  omrain, poro, moist, q, w, zdust=0.2, restart='false',
                  rstrt='self', mix=1, cec, alpha=3.4, ca_rain, n_rain,
                  sld=None, dust=None, psd=True, nstep=10, psdrain=None,
-                 uptake=False):
+                 uptake=False, parent=None):
+    """parent: optional [(mineral, wt fraction)] in the soil parent material besides
+    the inert matrix (e.g. kaolinite and gibbsite for an acid-buffered tropical soil)."""
+    pr = [('inrt', 1.0 - sum(f for _, f in parent))] + list(parent) if parent else [('inrt', 1.0)]
+    if parent:
+        sld = list(dict.fromkeys([m for m, _ in parent] + (sld or [])))
     mi.get_input_frame(outdir=OUT, runname=run, ztot=ztot, nz=nz, ttot=ttot,
                        temp=temp, fdust=fdust, fdust2=0, taudust=taudust,
                        omrain=omrain, zom=ztot, poro=poro, moistsrf=moist,
@@ -24,7 +29,7 @@ def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
                        nstep=nstep, rstrt=rstrt, runid=run)
     mi.get_input_switches(outdir=OUT, runname=run, w_scheme=1, mix_scheme=mix,
                           poro_iter='false', sldmin_lim='true', display=1,
-                          report=0, restart=restart, rough='true',
+                          report=0, restart=restart, rough=os.environ.get('TE_ROUGH', 'true'),
                           act_ON='false', dt_fix='false', cec_on='true',
                           dz_fix='true', close_aq='false', poro_evol='true',
                           sa_evol_1='true', sa_evol_2='false',
@@ -42,7 +47,7 @@ def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
                                      if sp not in ('ca', 'fe3')]
     if sld:
         rain += [('fe3', 1e-21)]
-    mi.get_input_tracer_bounds(outdir=OUT, runname=run, pr_list=[('inrt', 1.0)],
+    mi.get_input_tracer_bounds(outdir=OUT, runname=run, pr_list=pr,
                                rain_list=rain)
     mi.get_input_sld_properties(outdir=OUT, runname=run, filename='dust.in',
                                 sld_varlist=dust or [])
@@ -84,10 +89,12 @@ if __name__ == '__main__':
     ap.add_argument('--ca', type=float, default=5e-6)
     ap.add_argument('--n', type=float, default=15)  # g N/m2/yr
     ap.add_argument('--uptake', action='store_true')  # crop K, Ca, Mg uptake (g2k/g2ca/g2mg)
+    ap.add_argument('--parent', default='')  # e.g. 'ka:0.2,gb:0.02'
     a = ap.parse_args()
+    parent = [(x.split(':')[0], float(x.split(':')[1])) for x in a.parent.split(',') if x]
     write_common(a.name, ttot=a.ttot, temp=a.temp, omrain=a.om, poro=0.5,
                  moist=a.moist, q=a.q, w=a.w, cec=a.cec, ca_rain=a.ca,
-                 n_rain=a.n, uptake=a.uptake)
+                 n_rain=a.n, uptake=a.uptake, parent=parent or None)
     print('rc', run(a.name))
 
 
@@ -130,7 +137,7 @@ SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
 
 def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
           cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10, pulse=None, psdrain=None,
-          n_rain=0., uptake=False):
+          n_rain=0., uptake=False, parent=None):
     """Restart from spin-up and apply rock continuously at dose t/ha/yr, or,
     with pulse = tau (yr, < 1), once: dose t/ha spread over the first tau years.
     n_rain (g N/m2/yr, as NH4NO3) should match the spin-up so the fertiliser
@@ -147,5 +154,5 @@ def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
                  omrain=omrain, poro=0.5, moist=moist, q=q, w=w, zdust=zdust,
                  restart='true', rstrt=os.path.join(OUT, spin), mix=3, cec=cec, ca_rain=ca_rain,
                  n_rain=n_rain, sld=minerals + SECONDARY, dust=ROCKS[rock] if dose > 0 else [],
-                 nstep=nstep, psdrain=psdrain, uptake=uptake)
+                 nstep=nstep, psdrain=psdrain, uptake=uptake, parent=parent)
     return run(name)

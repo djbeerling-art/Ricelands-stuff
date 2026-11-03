@@ -139,7 +139,8 @@ def _dens(snap):
 
 def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         fe_reactive=0.1, hmo_g_per_kg=0.0, hum_g_per_kg=0.0, extra_totals=None, minerals=(),
-        valence_labels=None, courant=0.9, T=None, max_sub=None, cec_mode='total'):
+        valence_labels=None, courant=0.9, T=None, max_sub=None, cec_mode='total',
+        slow=None):
     """Run trace metals through SCEPTER snapshots.
 
     sv        : solver.Speciator built with the majors, metals, X, Hfo_w/Hfo_s,
@@ -152,6 +153,12 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
     hum_g_per_kg : active humic acid (simplified WHAM VII, chem.humic) per kg
                 soil; scalar or one value per cell (e.g. 0.5 x SOM)
     valence_labels: {metal: label passed to the solver}, e.g. {'As': 'As(5)'}
+    slow      : optional slow (aged / strongly held) pool exchanging with the
+                surface-sorbed metal, dS/dt = k_age*sorbed - k_rel*S, e.g.
+                {'total': {metal: mol/m3 slow pool at t0}, 'k_age': 1.0}. k_rel is set
+                per cell and metal at t0 so that the initial state is steady
+                (release from S balances ageing plus net leaching from the cell),
+                i.e. the control keeps its labile metal under the initial forcing.
     cec_mode  : 'total' offers SCEPTER's whole CEC to the TE exchanger (sites
                 SCEPTER leaves H-occupied become HX); 'eff' offers only the
                 charge SCEPTER holds as exchangeable base cations and Al.
@@ -169,7 +176,12 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         for j, m in enumerate(metals):
             tot[:, j] = background.get(m, 0.0)
     res = TEResult(z=s0.z, metals=list(metals),
-                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'mineral', 'total')})
+                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'mineral', 'total', 'slow')})
+    S = np.zeros((nz, len(metals))); k_rel = None
+    if slow:
+        for j, m in enumerate(metals):
+            S[:, j] = slow['total'].get(m, 0.0)
+        k_age = slow.get('k_age', 1.0)
     cum_rel = np.zeros(len(metals))
     cum_lea = np.zeros(len(metals))
     guesses = [None] * nz
@@ -260,6 +272,16 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
             c = part['dissolved'] / snap.W[:, None]          # mol/kgw
             flux = snap.q[:, None] * 1000.0 * c               # mol/m2/yr leaving each cell downward
             inflow = np.vstack([np.zeros((1, len(metals))), flux[:-1]])
+            if slow:
+                if k_rel is None:     # steady initial state
+                    net_out = np.maximum((flux - inflow) / snap.dz[:, None], 0.0)
+                    k_rel = (k_age * part['sorbed'] + net_out) / np.maximum(S, 1e-30)
+                    k_rel = np.where(S > 0, k_rel, 0.0)
+                    res.k_rel = k_rel.copy()
+                age = part['sorbed'] * (1 - np.exp(-k_age * dt))
+                rel = S * (1 - np.exp(-k_rel * dt))
+                S += age - rel
+                tot += rel - age
             tot += (inflow - flux) * dt / snap.dz[:, None]
             cum_lea += flux[-1] * dt
         part = equilibrate(snap, hostt)
@@ -268,6 +290,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         for k in part:
             res.pools[k].append(part[k])
         res.pools['total'].append(tot.copy())
+        res.pools['slow'].append(S.copy())
         res.released.append(cum_rel.copy())
         res.leached.append(cum_lea.copy())
         res.host.append(hostt)
