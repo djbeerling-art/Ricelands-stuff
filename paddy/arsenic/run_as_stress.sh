@@ -5,6 +5,8 @@
 # Usage (repository root, SCEPTER_OUT as for the sweep): paddy/arsenic/run_as_stress.sh <soil index 0-26> <scenario> [NSET, default 5]
 # Scenarios: dose5, dose10, dose40 (basalt t/ha); ox01 (As(III) oxidation as3ox/as3oa 10x slower, both arms);
 #            fsite2 (twice the ferrihydrite sites available to As, both arms)
+#            worst40 (ox01 + fsite2 together, 40 t/ha: combined worst case)
+# Every scenario runs its own control from the same settled state with the same parameters (year-matched control).
 set -u
 i=$1; sc=$2; NSET=${3:-5}
 FE3=(0.004 0.012 0.03); GT=(0.005 0.02 0.06); ALK=(0 1 5)
@@ -17,6 +19,7 @@ case $sc in
   dose5) DOSE=5;; dose10) DOSE=10;; dose40) DOSE=40;;
   ox01) K=paddy/arsenic/krxn_v25_as3ox_slow.in;;
   fsite2) S="$S --assite=2:0.02";;
+  worst40) DOSE=40; K=paddy/arsenic/krxn_v25_as3ox_slow.in; S="$S --assite=2:0.02";;
   *) echo "unknown scenario $sc" >&2; exit 2;;
 esac
 PROD=$(echo $PROD | sed "s#--k=[^ ]*#--k=$K#")

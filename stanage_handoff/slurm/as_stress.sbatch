@@ -13,6 +13,6 @@
 module purge; module load GCC/12.3.0 OpenBLAS/0.3.23-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0
 python3 -c 'import numpy' || exit 1
 export SCEPTER_OUT=${SCEPTER_OUT:-/mnt/parscratch/users/$USER/scepter_as/}
-SOILS=(10 11 19 20); SC=(dose5 dose10 dose40 ox01 fsite2)
+SOILS=(10 11 19 20); SC=(${SCN:-dose5 dose10 dose40 ox01 fsite2}); n=${#SC[@]}   # SCN=worst40: sbatch --export=ALL,SCN=worst40 --array=0-3
 t=$SLURM_ARRAY_TASK_ID
-bash paddy/arsenic/run_as_stress.sh ${SOILS[$((t/5))]} ${SC[$((t%5))]}
+bash paddy/arsenic/run_as_stress.sh ${SOILS[$((t/n))]} ${SC[$((t%n))]}
