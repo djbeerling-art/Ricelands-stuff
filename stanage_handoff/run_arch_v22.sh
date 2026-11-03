@@ -50,10 +50,13 @@ if ! ok gs22_$a; then
   echo "$args" > "$AF"
   paddy/prune_run.sh spin $SCEPTER_OUT/paddy/flood_gs22_$a
 fi
-# Control settle to convergence (v25b protocol, paddy/v25/stanage/pipeline_v25b.sbatch): at least SMIN (7), at most SMAX
-# (12) years, stopping once season CH4 emission changes <2 %/yr over two consecutive years. The final fallow is renamed
-# flood_st22_<a>_set (restart state for the dose chains and for future-climate BASE_OUT runs); status line
-# "st22_<a>_set rc 0 years N converged 0|1".
+# Control settle to steady state. v25b GMD protocol: at least SMIN (7), at most 12 years, stopping once season CH4 changes
+# <2 %/yr over two consecutive years. Global runs (3 Nov 2026): reducible Fe(III) (amfe3) in cool, high-OM archetypes
+# depletes with a ~20-yr e-folding time, so a 12-yr settle left the controls drifting (CH4 x2-3 over 25 yr). The settle
+# therefore also requires the column Fe(III) stock (amfe3, from the latest fallow's restart profile) to change < FETOL
+# (default 1 %/yr) over two consecutive years, up to SMAX (default 80) years. FETOL=off restores the CH4-only criterion.
+# The final fallow is renamed flood_st22_<a>_set (restart state for the dose chains and future-climate BASE_OUT runs);
+# status line "st22_<a>_set rc 0 years N converged 0|1"; the yearly CH4 and Fe(III) series are in <status>_settle.txt.
 emis(){ python3 - "$1" <<'PY'
 import sys, numpy as np
 f = sys.argv[1] + '/flx/flx_gas-pch4.txt'
@@ -63,12 +66,35 @@ c = lambda k: float((d[:, h.index(k)]*dt).sum()) if k in h else 0.0
 print(c('dif') + c('ch4eb') + c('ch4pl'))
 PY
 }
+fe3(){ python3 - "$1" <<'PY'
+import sys
+f = sys.argv[1] + '/prof/prof_sld-save.txt'
+L = open(f).read().splitlines(); h = L[0]
+names = ['z'] + [h[4+5*i:9+5*i].strip() for i in range((len(h.rstrip())-4)//5)]
+j = names.index('amfe3')
+print(sum(float(l.split()[j]) for l in L[1:] if l.strip()))
+PY
+}
 if ! ok st22_${a}_set; then
-  Y=0; cv=0
-  for n in $(seq ${SMIN:-7} ${SMAX:-12}); do
+  Y=0; cv=0; SL="${ST%.txt}_settle.txt"; touch "$SL"
+  for n in $(seq ${SMIN:-7} ${SMAX:-80}); do
+    grep -q "^$n " "$SL" && { Y=$n; continue; }   # resume: year already checked
     paddy/multiyear/run_chain.sh st22_$a $n 0 gs22_$a "$ST" $PROD $P21 $args $(kaq) || exit 1
-    Y=$n; e=$(for k in 2 1 0; do emis $SCEPTER_OUT/paddy/flood_st22_${a}_y$((n-k))s; done | tr '\n' ' ')
-    python3 -c "import sys; a,b,c=map(float,'$e'.split()); sys.exit(0 if abs(b/a-1)<0.02 and abs(c/b-1)<0.02 else 1)" && { cv=1; break; }
+    Y=$n; c=$(emis $SCEPTER_OUT/paddy/flood_st22_${a}_y${n}s 2>/dev/null || echo nan); f=$(fe3 $SCEPTER_OUT/paddy/flood_st22_${a}_y${n}f 2>/dev/null || echo nan)
+    echo "$n $c $f" >> "$SL"
+    [ $n -ge 3 ] && rm -rf $SCEPTER_OUT/paddy/flood_st22_${a}_y$((n-3))[sf]   # keep the last three years only
+    python3 - "$SL" "${FETOL:-0.01}" <<'PY' && { cv=1; break; }
+import sys, math
+r = [l.split() for l in open(sys.argv[1]) if l.strip()]
+if len(r) < 3: sys.exit(1)
+(_, c0, f0), (_, c1, f1), (_, c2, f2) = r[-3:]
+c0, c1, c2 = float(c0), float(c1), float(c2)
+ok = abs(c1/c0-1) < 0.02 and abs(c2/c1-1) < 0.02
+if sys.argv[2] != 'off':
+    f0, f1, f2 = float(f0), float(f1), float(f2); t = float(sys.argv[2])
+    ok = ok and not math.isnan(f2) and abs(f1/f0-1) < t and abs(f2/f1-1) < t
+sys.exit(0 if ok else 1)
+PY
   done
   rm -rf $SCEPTER_OUT/paddy/flood_st22_${a}_set
   mv $SCEPTER_OUT/paddy/flood_st22_${a}_y${Y}f $SCEPTER_OUT/paddy/flood_st22_${a}_set || exit 1
