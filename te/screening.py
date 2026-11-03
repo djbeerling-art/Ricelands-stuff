@@ -23,6 +23,13 @@ import numpy as np
 
 DUPLA_LEACH = {'Ni': 0.166, 'Cu': 0.049, 'Cr': 0.026, 'Zn': 0.098}
 DEPTH, BD_SOIL0, BD_ROCK, R_WEATH = 0.20, 1300.0, 2000.0, 0.01
+# Dupla et al. 2023 SI: GEOROC means (Table S1), Kabata-Pendias world soil
+# means (start values), aqua-regia extractability used to adjust limits, and
+# maize grain removal (Table S4, g/ha/yr).
+DUPLA_LIP_MEAN = {'Cr': 165.3, 'Cu': 129.1, 'Ni': 79.8, 'Zn': 99.4}
+DUPLA_SOIL0 = {'Cr': 59.5, 'Cu': 38.9, 'Ni': 29.0, 'Zn': 70.0}
+DUPLA_EXTRACT = {'Ni': 0.884, 'Cr': 0.559, 'Cu': 0.906, 'Zn': 0.895}
+DUPLA_CROP_G_HA = {'Ni': 2.30, 'Cr': 1.84, 'Cu': 17.26, 'Zn': 121.8}
 
 
 def dupla(c_rock, c_soil0, dose_t_ha_yr, years, *, scenario='minimal', leach=0.0,
@@ -46,7 +53,27 @@ def dupla(c_rock, c_soil0, dose_t_ha_yr, years, *, scenario='minimal', leach=0.0
             c = c + add * keep - crop_mg_kg_yr
             out[n - 1] = c
         return out
-    # minimal weathering, Eqs. 1-4 (rock volume displaces soil; BD changes)
+    if scenario == 'minimal':
+        # Eqs. 1-4 as published (reproduces Dupla's mean-LIP result: first Cu
+        # limit after 6 yr, Ni after 11 yr at 40 t/ha/yr). Note Eq. 4.2 as
+        # printed, Mass_i = Rate_w*Mass_{i-1} + Mass_app, so the rock that
+        # weathers each year is ~one year's application, while the undissolved
+        # rock (Eq. 2.1) accumulates all applications; losses (Eq. 4) are
+        # applied once to the cumulative weathered TE.
+        m_i, sum_m = app, 0.0
+        for n in range(1, years + 1):
+            if n > 1:
+                m_i = r_weath * m_i + app
+            sum_m += m_i
+            v_rock = app / bd_rock * sum((1 - r_weath) ** i for i in range(1, n + 1))
+            bd_n = (v_rock * bd_rock + (vol - v_rock) * bd_soil0) / vol
+            nat = c_soil0 * (vol - v_rock) / vol
+            unw = c_rock * v_rock / vol
+            wth = c_rock * r_weath * sum_m / (bd_n * vol)
+            out[n - 1] = nat + unw + wth * (1 - leach) - crop_mg_kg_yr
+        return out
+    # 'minimal_consistent': 1 %/yr of the whole undissolved stock weathers,
+    # rock displaces soil, and leaching/crop losses act every year.
     mass_rock = 0.0                        # undissolved rock kg/m2
     weathered = 0.0                        # net TE from weathered rock, mg/m2
     for n in range(1, years + 1):
