@@ -30,7 +30,8 @@ Scope decisions (David, 3 Nov; also in the plan doc):
   are reported separately; the boundary between them is a sensitivity parameter.
 - Headline result: whether Dupla-style screening and the mechanistic model agree on the risk class
   for each soil x basalt x dose (not threshold dates).
-- Dupla PDF and the plan .docx are in the project files: /mnt/project-files/te/refs/.
+- Dupla PDF, plan .docx and Beerling et al. 2024 PNAS (Corn Belt field trial, T2 site, 50 t/ha/yr x 4 yr,
+  trace metals in SI Figs S16-S18 + Dataset S1, not yet obtained) are in /mnt/project-files/te/refs/.
 
 Chemistry prototype (te/chem, see te/chem/README.md):
 - Reads minteq.v4.dat + te/chem/data/te_extra.dat directly, so its constants are PHREEQC's.
