@@ -160,7 +160,8 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
                 limited scheme. For century-scale runs.
     slow      : optional slow (aged / strongly held) pool exchanging with the
                 surface-sorbed metal, dS/dt = k_age*sorbed - k_rel*S, e.g.
-                {'total': {metal: mol/m3 slow pool at t0}, 'k_age': 1.0}. k_rel is set
+                {'total': {metal: mol/m3 slow pool at t0}, 'k_age': 1.0}; k_age may be a
+                {metal: 1/yr} dict (missing metals do not age). k_rel is set
                 per cell and metal at t0 so that the initial state is steady
                 (release from S balances ageing plus net leaching from the cell),
                 i.e. the control keeps its labile metal under the initial forcing.
@@ -181,12 +182,14 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         for j, m in enumerate(metals):
             tot[:, j] = background.get(m, 0.0)
     res = TEResult(z=s0.z, metals=list(metals),
-                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'mineral', 'total', 'slow')})
+                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'mineral', 'total', 'slow')})
     S = np.zeros((nz, len(metals))); k_rel = None
     if slow:
         for j, m in enumerate(metals):
             S[:, j] = slow['total'].get(m, 0.0)
         k_age = slow.get('k_age', 1.0)
+        if isinstance(k_age, dict):       # per-metal ageing rate; metals left out do not age
+            k_age = np.array([float(k_age.get(m, 0.0)) for m in metals])
     cum_rel = np.zeros(len(metals))
     cum_lea = np.zeros(len(metals))
     guesses = [None] * nz
@@ -234,7 +237,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         return out
 
     def equilibrate(snap, hostt):
-        part = {p: np.zeros_like(tot) for p in ('dissolved', 'exchange', 'sorbed', 'mineral')}
+        part = {p: np.zeros_like(tot) for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'mineral')}
         for i in range(nz):
             totals = dict(hostt[i])
             for j, m in enumerate(metals):
