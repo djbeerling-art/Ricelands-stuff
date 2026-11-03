@@ -15,7 +15,7 @@ OUT = os.environ.get('TE_OUT', '/home/user/te_runs/')
 def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
                  omrain, poro, moist, q, w, zdust=0.2, restart='false',
                  rstrt='self', mix=1, cec, alpha=3.4, ca_rain, n_rain,
-                 sld=None, dust=None, psd=True, nstep=10):
+                 sld=None, dust=None, psd=True, nstep=10, psdrain=None):
     mi.get_input_frame(outdir=OUT, runname=run, ztot=ztot, nz=nz, ttot=ttot,
                        temp=temp, fdust=fdust, fdust2=0, taudust=taudust,
                        omrain=omrain, zom=ztot, poro=poro, moistsrf=moist,
@@ -53,8 +53,14 @@ def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
                                 sld_varlist=[('g2', 1), ('amnt', nr)])
     mi.get_input_sld_properties(outdir=OUT, runname=run, filename='2ndslds.in',
                                 srcfile=os.path.join(ROOT, 'data/2ndslds_def.in'))
-    mi.get_input_sld_properties(outdir=OUT, runname=run, filename='psdrain.in',
-                                srcfile=os.path.join(ROOT, 'data/psdrain_100um.in'))
+    if psdrain:   # (median radius m, sd of log10 radius, weight) tuples
+        with open(os.path.join(OUT, run, 'psdrain.in'), 'w') as f:
+            f.write('** mean radius [m], standard deviation in log10 [-], weight [-]\n')
+            for r, sd, w_ in psdrain:
+                f.write(f'{r:.4e}\t{sd:.4f}\t{w_}\n')
+    else:
+        mi.get_input_sld_properties(outdir=OUT, runname=run, filename='psdrain.in',
+                                    srcfile=os.path.join(ROOT, 'data/psdrain_100um.in'))
     shutil.copy(EXE, os.path.join(OUT, run, 'scepter'))
 
 
@@ -82,6 +88,11 @@ if __name__ == '__main__':
     print('rc', run(a.name))
 
 
+# Feedstock grain size as SCEPTER dust PSD (lognormal in radius).
+# Pioneer Valley basalt (Zacharias): 61.4% < 150 um, 38.5% < 75 um -> lognormal
+# fit D50 = 106 um, sigma_ln = 1.19 (sd log10 = 0.517), P80 = 290 um.
+PSD = {'pioneer': [(53e-6, 0.517, 1)]}
+
 ROCKS = {  # SCEPTER mineral recipes (wt fraction)
     'hillhouse': [('la', 0.346), ('agt', 0.327), ('fo', 0.147), ('anl', 0.071)],
     # Pioneer Valley metabasalt (Vermont trial, Zacharias et al.): plagioclase +
@@ -93,7 +104,7 @@ SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
 
 
 def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
-          cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10, pulse=None):
+          cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10, pulse=None, psdrain=None):
     """Restart from spin-up and apply rock continuously at dose t/ha/yr, or,
     with pulse = tau (yr, < 1), once: dose t/ha spread over the first tau years."""
     d = os.path.join(OUT, name)
@@ -108,5 +119,5 @@ def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
                  omrain=omrain, poro=0.5, moist=moist, q=q, w=w, zdust=zdust,
                  restart='true', rstrt=os.path.join(OUT, spin), mix=3, cec=cec, ca_rain=ca_rain,
                  n_rain=0., sld=minerals + SECONDARY, dust=ROCKS[rock] if dose > 0 else [],
-                 nstep=nstep)
+                 nstep=nstep, psdrain=psdrain)
     return run(name)
