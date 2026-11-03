@@ -42,25 +42,32 @@ def extract(sv, cell_totals, *, soil_kg, cec, surfaces, protocol, T=293.15, gues
     return r, W
 
 
-def extractable_mgkg(sv, res, snap, k, cells, metals, mw, *, protocol, soil_kg_per_m3):
-    """Mass-weighted extractable metal (mg/kg) over `cells` at snapshot k of a
-    scepter_te.TEResult (res.host, res.surfaces, res.cec_x, res.pools)."""
-    num = np.zeros(len(metals)); den = 0.0
+def extracted_cells(sv, res, snap, k, cells, metals, *, protocol, soil_kg_per_m3):
+    """Per-cell extracted metal (mol per m2 of cell) and soil mass (kg per m2)
+    at snapshot k of a scepter_te.TEResult (res.host, res.surfaces, res.cec_x, res.pools)."""
+    out = np.zeros((len(cells), len(metals))); soil = np.zeros(len(cells))
     cec = res.cec_x(snap)
-    for i in cells:
+    for n, i in enumerate(cells):
         vol = snap.dz[i]                                     # m3 per m2
         sk = soil_kg_per_m3[i] * vol
         tot = {l: v * vol for l, v in res.host[k][i].items()}
         for j, m in enumerate(metals):
             tot[res.labels[m]] = max(res.pools['total'][k][i, j], 1e-30) * vol
-        surf = res.surfaces(i)
-        surf = {n: _scale(s, vol) for n, s in surf.items()}
+        surf = {nm: _scale(s, vol) for nm, s in res.surfaces(i).items()}
         r, W = extract(sv, tot, soil_kg=sk, cec=float(cec[i]) * vol, surfaces=surf,
                        protocol=protocol)
         for j, m in enumerate(metals):
-            num[j] += r.partition[res.labels[m]]['dissolved'] * mw[m] * 1e3   # mg
-        den += sk
-    return num / den
+            out[n, j] = r.partition[res.labels[m]]['dissolved']
+        soil[n] = sk
+    return out, soil
+
+
+def extractable_mgkg(sv, res, snap, k, cells, metals, mw, *, protocol, soil_kg_per_m3):
+    """Mass-weighted extractable metal (mg/kg) over `cells` at snapshot k."""
+    out, soil = extracted_cells(sv, res, snap, k, cells, metals, protocol=protocol,
+                                soil_kg_per_m3=soil_kg_per_m3)
+    mwv = np.array([mw[m] for m in metals])
+    return (out * mwv * 1e3).sum(0) / soil.sum()
 
 
 def _scale(s, f):

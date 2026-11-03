@@ -97,8 +97,12 @@ if __name__ == '__main__':
 # P80 = 281 um (283 um by interpolation); max misfit 0.6% passing.
 # Blue Ridge metabasalt (Corn Belt; Beerling et al. 2024): P80 = 267 um. Spread
 # not reported: sigma_ln 1.16 assumed (as Pioneer Valley) -> D50 = 101 um.
+# Tawau basaltic andesite: <5 mm jaw/cone-crushed screenings (Lewis et al. 2021,
+# Table 1); cumulative mass PSD read from the vector data of Lewis 2021 SI Fig S3
+# (D50 ~0.9 mm, P80 ~1.7 mm), fitted with two lognormal modes (max misfit 2% passing).
 PSD = {'pioneer': [(53e-6, 0.503, 1)],
-       'blueridge': [(50e-6, 0.503, 1)]}
+       'blueridge': [(50e-6, 0.503, 1)],
+       'tawau': [(170e-6, 0.527, 0.518), (662e-6, 0.191, 0.482)]}
 
 ROCKS = {  # SCEPTER mineral recipes (wt fraction)
     'hillhouse': [('la', 0.346), ('agt', 0.327), ('fo', 0.147), ('anl', 0.071)],
@@ -113,6 +117,13 @@ ROCKS = {  # SCEPTER mineral recipes (wt fraction)
     # quartz 9, calcite 2.6, muscovite 1.4 wt%.
     'blueridge': [('clch', 0.34), ('ab', 0.233), ('ep', 0.178), ('tm', 0.119),
                   ('qtz', 0.09), ('cc', 0.026), ('mscv', 0.014)],
+    # Tawau basaltic andesite (Sabah; Lewis et al. 2021 SI Table S2, SEM-EDS + XRD):
+    # plagioclase An64 44.6 (as labradorite), quartz 19.1, sanidine 13.3 (as K-feldspar),
+    # diopside 12.4, smectite 5.8, magnetite 2.0, epistilbite 1.0, calcite 0.8, biotite
+    # 0.6, apatite 0.4 wt%. Smectite, epistilbite, biotite, apatite left out
+    # (unreactive or absent from SCEPTER); the rest renormalised to 1.
+    'tawau': [('la', 0.484), ('qtz', 0.207), ('kfs', 0.144), ('dp', 0.134),
+              ('mgn', 0.022), ('cc', 0.009)],
 }
 SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
 
