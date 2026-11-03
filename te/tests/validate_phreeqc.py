@@ -14,7 +14,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..'))
-from chem import thermo, system, solver, phreeqc_ref as pr  # noqa: E402
+from chem import thermo, system, solver, humic, phreeqc_ref as pr  # noqa: E402
 
 OUT = os.path.join(HERE, 'out')
 PH = [4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
@@ -51,8 +51,21 @@ CASES.append(('edge_AsIII', base(pe=0, solution={'Na': 0.01, 'Cl': 0.011, 'As(3)
               {'metals': ['As'], 'redox': 'coupled', 'free': 'H3AsO3'}))
 # Mn oxide (HMO) edges for the cations it binds, alone and with Hfo
 for m in ['Ni', 'Co', 'Cu', 'Zn', 'Cd', 'Pb']:
-    CASES.append(('hmo_' + m, base(hfo=None, hmo=HMO, solution={'Na': 0.01, 'Cl': 0.011, m: 1e-6}),
+    # Co at pe 6: at pe 12 PHREEQC oxidises some Co to Co(III), which SCEPTER-TE does not carry
+    CASES.append(('hmo_' + m, base(hfo=None, hmo=HMO, pe=6 if m == 'Co' else 12,
+                                   solution={'Na': 0.01, 'Cl': 0.011, m: 1e-6}),
                   {'metals': [m]}))
+# Humic acid (simplified WHAM VII, non-electrostatic): 0.1 g HA, alone
+for m in ['Ni', 'Co', 'Cu', 'Zn', 'Cd', 'Pb']:
+    CASES.append(('hum_' + m, base(hfo=None, hum=0.1, pe=6 if m == 'Co' else 12,
+                                   solution={'Na': 0.01, 'Cl': 0.011, m: 1e-6}),
+                  {'metals': [m]}))
+CASES.append(('hum_soil', base(hfo=None, hum=0.1, pco2_si=-2.0, cec=0.05,
+                               solution={'Na': 1e-3, 'K': 2e-4, 'Ca': 2e-3, 'Mg': 5e-4, 'Cl': 4e-3,
+                                         'Al': 1e-6, 'Ni': 1e-6, 'Cu': 1e-6, 'Zn': 1e-6,
+                                         'Cd': 1e-7, 'Pb': 1e-7},
+                               pH=[4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0]),
+              {'metals': METALS + ['Al']}))
 # As(V) with competing phosphate, silicate (basalt) and bicarbonate (pCO2 1%)
 CASES.append(('AsV_competition', base(pco2_si=-2.0, solution={
     'Na': 0.01, 'Cl': 0.011, 'Ca': 1e-3, 'As(5)': 1e-6, 'P': 2e-5, 'Si': 5e-4}),
@@ -97,7 +110,8 @@ def run_case(name, case, opt):
     sy = system.build(db, els, redox=opt.get('redox', 'decoupled'), valences=val,
                       exchangers=['X'] if case['cec'] else [],
                       surfaces=(['Hfo_w', 'Hfo_s'] if case['hfo'] else [])
-                      + (['Hmo_x', 'Hmo_y'] if case.get('hmo') else []),
+                      + (['Hmo_x', 'Hmo_y'] if case.get('hmo') else [])
+                      + (list(humic.PER_G) if case.get('hum') else []),
                       phases=case['minerals'] + (['CO2(g)'] if case['pco2_si'] is not None else []))
     species = sy.aq.names + sy.ex.names + sy.surf.names
     rows = pr.run(dict(case, elements=els), species)
@@ -116,6 +130,8 @@ def run_case(name, case, opt):
             h = case['hmo']
             kw.setdefault('surfaces', {})['Hmo'] = solver.Surface(
                 {'Hmo_x': h['x'], 'Hmo_y': h['y']}, h['area'], h['mass'])
+        if case.get('hum'):
+            kw.setdefault('surfaces', {})['Hum'] = humic.surface(case['hum'])
         if case['cec']:
             kw['cec'] = {'X': case['cec']}
         if case['pco2_si'] is not None:

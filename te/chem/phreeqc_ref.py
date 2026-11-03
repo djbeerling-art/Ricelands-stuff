@@ -28,6 +28,10 @@ def _surf_lines(case):
     if case.get('hmo'):
         h = case['hmo']
         out += [f"  Hmo_xOH {h['x']} {h['area']} {h['mass']}", f"  Hmo_yOH {h['y']}"]
+    if case.get('hum'):
+        from .humic import sites
+        out += [f"  {k}H {v}" for k, v in sites(case['hum']).items()]
+        out.append('  -no_edl')   # applies to the whole SURFACE block
     return out
 
 
@@ -77,7 +81,7 @@ def run(case, species):
             b.append(f'  {m} 0 0')
         if case.get('cec'):
             b += ['EXCHANGE 1', f"  X {case['cec']}", '  -equilibrate 1']
-        if case.get('hfo') or case.get('hmo'):
+        if case.get('hfo') or case.get('hmo') or case.get('hum'):
             b += ['SURFACE 1'] + _surf_lines(case) + ['  -equilibrate 1']
         b += ['USER_PUNCH', '-headings ' + head] + punch + \
              ['SELECTED_OUTPUT', '-reset false', 'END']

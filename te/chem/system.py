@@ -209,7 +209,9 @@ def build(db, elements, redox='decoupled', valences=None, exchangers=(),
             if abs(n) < 1e-12:
                 continue
             ne = nu.get('e-', 0.0)
-            if abs(ne) < 1e-12:
+            if abs(ne) < 1e-12 or not sec_by_prim.get(p):
+                # no electrons left, or this element carries no secondary
+                # valence (the e- belongs to another element's master)
                 if not keep_prim_state[p]:
                     return None
                 continue

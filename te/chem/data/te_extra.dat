@@ -122,6 +122,264 @@ Hfo_wOH + H4SiO4 = Hfo_wH2SiO4- + H+ + H2O
 	log_k -3.22
 Hfo_wOH + H4SiO4 = Hfo_wHSiO4-2 + 2 H+ + H2O
 	log_k -11.69
+# Humic acid: WHAM Model VII constants (Tipping, Lofts & Sonke 2011, Environ. Chem. 8:225),
+# simplified to monodentate binding on 8 proton sites (A: pKA 4.1 +/- dpKA 2.6; B: pKB 8.3
+# +/- 3.1), log KMB = log KMA * pKB/pKA, plus two strong classes on A sites (9% and 0.9%,
+# +LK2 and +2 LK2). Non-electrostatic (use Surface(edl=False) / PHREEQC -no_edl).
+# Per g HA: aa-ad 0.901*nA/4, ba-bd nA/8, sa 0.09*nA, sb 0.009*nA (nA 3.4 mmol/g).
+# (Site names use letters: PHREEQC reads digits in element names as stoichiometry.)
+SURFACE_MASTER_SPECIES
+Hum_aa Hum_aaH
+Hum_ab Hum_abH
+Hum_ac Hum_acH
+Hum_ad Hum_adH
+Hum_ba Hum_baH
+Hum_bb Hum_bbH
+Hum_bc Hum_bcH
+Hum_bd Hum_bdH
+Hum_sa Hum_saH
+Hum_sb Hum_sbH
+SURFACE_SPECIES
+Hum_aaH = Hum_aaH
+	log_k 0
+Hum_aaH = Hum_aa- + H+
+	log_k -2.8000
+Hum_aaH + Ca+2 = Hum_aaCa+ + H+
+	log_k -1.5400
+Hum_aaH + Mg+2 = Hum_aaMg+ + H+
+	log_k -1.6600
+Hum_aaH + Al+3 = Hum_aaAl+2 + H+
+	log_k 0.0200
+Hum_aaH + Mn+2 = Hum_aaMn+ + H+
+	log_k -0.8200
+Hum_aaH + Co+2 = Hum_aaCo+ + H+
+	log_k -1.3000
+Hum_aaH + Ni+2 = Hum_aaNi+ + H+
+	log_k -1.2000
+Hum_aaH + Cu+2 = Hum_aaCu+ + H+
+	log_k -0.4200
+Hum_aaH + Zn+2 = Hum_aaZn+ + H+
+	log_k -0.9300
+Hum_aaH + Cd+2 = Hum_aaCd+ + H+
+	log_k -1.1300
+Hum_aaH + Pb+2 = Hum_aaPb+ + H+
+	log_k -0.4300
+Hum_abH = Hum_abH
+	log_k 0
+Hum_abH = Hum_ab- + H+
+	log_k -3.6667
+Hum_abH + Ca+2 = Hum_abCa+ + H+
+	log_k -2.4067
+Hum_abH + Mg+2 = Hum_abMg+ + H+
+	log_k -2.5267
+Hum_abH + Al+3 = Hum_abAl+2 + H+
+	log_k -0.8467
+Hum_abH + Mn+2 = Hum_abMn+ + H+
+	log_k -1.6867
+Hum_abH + Co+2 = Hum_abCo+ + H+
+	log_k -2.1667
+Hum_abH + Ni+2 = Hum_abNi+ + H+
+	log_k -2.0667
+Hum_abH + Cu+2 = Hum_abCu+ + H+
+	log_k -1.2867
+Hum_abH + Zn+2 = Hum_abZn+ + H+
+	log_k -1.7967
+Hum_abH + Cd+2 = Hum_abCd+ + H+
+	log_k -1.9967
+Hum_abH + Pb+2 = Hum_abPb+ + H+
+	log_k -1.2967
+Hum_acH = Hum_acH
+	log_k 0
+Hum_acH = Hum_ac- + H+
+	log_k -4.5333
+Hum_acH + Ca+2 = Hum_acCa+ + H+
+	log_k -3.2733
+Hum_acH + Mg+2 = Hum_acMg+ + H+
+	log_k -3.3933
+Hum_acH + Al+3 = Hum_acAl+2 + H+
+	log_k -1.7133
+Hum_acH + Mn+2 = Hum_acMn+ + H+
+	log_k -2.5533
+Hum_acH + Co+2 = Hum_acCo+ + H+
+	log_k -3.0333
+Hum_acH + Ni+2 = Hum_acNi+ + H+
+	log_k -2.9333
+Hum_acH + Cu+2 = Hum_acCu+ + H+
+	log_k -2.1533
+Hum_acH + Zn+2 = Hum_acZn+ + H+
+	log_k -2.6633
+Hum_acH + Cd+2 = Hum_acCd+ + H+
+	log_k -2.8633
+Hum_acH + Pb+2 = Hum_acPb+ + H+
+	log_k -2.1633
+Hum_adH = Hum_adH
+	log_k 0
+Hum_adH = Hum_ad- + H+
+	log_k -5.4000
+Hum_adH + Ca+2 = Hum_adCa+ + H+
+	log_k -4.1400
+Hum_adH + Mg+2 = Hum_adMg+ + H+
+	log_k -4.2600
+Hum_adH + Al+3 = Hum_adAl+2 + H+
+	log_k -2.5800
+Hum_adH + Mn+2 = Hum_adMn+ + H+
+	log_k -3.4200
+Hum_adH + Co+2 = Hum_adCo+ + H+
+	log_k -3.9000
+Hum_adH + Ni+2 = Hum_adNi+ + H+
+	log_k -3.8000
+Hum_adH + Cu+2 = Hum_adCu+ + H+
+	log_k -3.0200
+Hum_adH + Zn+2 = Hum_adZn+ + H+
+	log_k -3.5300
+Hum_adH + Cd+2 = Hum_adCd+ + H+
+	log_k -3.7300
+Hum_adH + Pb+2 = Hum_adPb+ + H+
+	log_k -3.0300
+Hum_baH = Hum_baH
+	log_k 0
+Hum_baH = Hum_ba- + H+
+	log_k -6.7500
+Hum_baH + Ca+2 = Hum_baCa+ + H+
+	log_k -4.1993
+Hum_baH + Mg+2 = Hum_baMg+ + H+
+	log_k -4.4422
+Hum_baH + Al+3 = Hum_baAl+2 + H+
+	log_k -1.0412
+Hum_baH + Mn+2 = Hum_baMn+ + H+
+	log_k -2.7417
+Hum_baH + Co+2 = Hum_baCo+ + H+
+	log_k -3.7134
+Hum_baH + Ni+2 = Hum_baNi+ + H+
+	log_k -3.5110
+Hum_baH + Cu+2 = Hum_baCu+ + H+
+	log_k -1.9320
+Hum_baH + Zn+2 = Hum_baZn+ + H+
+	log_k -2.9644
+Hum_baH + Cd+2 = Hum_baCd+ + H+
+	log_k -3.3693
+Hum_baH + Pb+2 = Hum_baPb+ + H+
+	log_k -1.9522
+Hum_bbH = Hum_bbH
+	log_k 0
+Hum_bbH = Hum_bb- + H+
+	log_k -7.7833
+Hum_bbH + Ca+2 = Hum_bbCa+ + H+
+	log_k -5.2326
+Hum_bbH + Mg+2 = Hum_bbMg+ + H+
+	log_k -5.4755
+Hum_bbH + Al+3 = Hum_bbAl+2 + H+
+	log_k -2.0746
+Hum_bbH + Mn+2 = Hum_bbMn+ + H+
+	log_k -3.7750
+Hum_bbH + Co+2 = Hum_bbCo+ + H+
+	log_k -4.7467
+Hum_bbH + Ni+2 = Hum_bbNi+ + H+
+	log_k -4.5443
+Hum_bbH + Cu+2 = Hum_bbCu+ + H+
+	log_k -2.9653
+Hum_bbH + Zn+2 = Hum_bbZn+ + H+
+	log_k -3.9977
+Hum_bbH + Cd+2 = Hum_bbCd+ + H+
+	log_k -4.4026
+Hum_bbH + Pb+2 = Hum_bbPb+ + H+
+	log_k -2.9855
+Hum_bcH = Hum_bcH
+	log_k 0
+Hum_bcH = Hum_bc- + H+
+	log_k -8.8167
+Hum_bcH + Ca+2 = Hum_bcCa+ + H+
+	log_k -6.2659
+Hum_bcH + Mg+2 = Hum_bcMg+ + H+
+	log_k -6.5089
+Hum_bcH + Al+3 = Hum_bcAl+2 + H+
+	log_k -3.1079
+Hum_bcH + Mn+2 = Hum_bcMn+ + H+
+	log_k -4.8084
+Hum_bcH + Co+2 = Hum_bcCo+ + H+
+	log_k -5.7801
+Hum_bcH + Ni+2 = Hum_bcNi+ + H+
+	log_k -5.5776
+Hum_bcH + Cu+2 = Hum_bcCu+ + H+
+	log_k -3.9986
+Hum_bcH + Zn+2 = Hum_bcZn+ + H+
+	log_k -5.0311
+Hum_bcH + Cd+2 = Hum_bcCd+ + H+
+	log_k -5.4359
+Hum_bcH + Pb+2 = Hum_bcPb+ + H+
+	log_k -4.0189
+Hum_bdH = Hum_bdH
+	log_k 0
+Hum_bdH = Hum_bd- + H+
+	log_k -9.8500
+Hum_bdH + Ca+2 = Hum_bdCa+ + H+
+	log_k -7.2993
+Hum_bdH + Mg+2 = Hum_bdMg+ + H+
+	log_k -7.5422
+Hum_bdH + Al+3 = Hum_bdAl+2 + H+
+	log_k -4.1412
+Hum_bdH + Mn+2 = Hum_bdMn+ + H+
+	log_k -5.8417
+Hum_bdH + Co+2 = Hum_bdCo+ + H+
+	log_k -6.8134
+Hum_bdH + Ni+2 = Hum_bdNi+ + H+
+	log_k -6.6110
+Hum_bdH + Cu+2 = Hum_bdCu+ + H+
+	log_k -5.0320
+Hum_bdH + Zn+2 = Hum_bdZn+ + H+
+	log_k -6.0644
+Hum_bdH + Cd+2 = Hum_bdCd+ + H+
+	log_k -6.4693
+Hum_bdH + Pb+2 = Hum_bdPb+ + H+
+	log_k -5.0522
+Hum_saH = Hum_saH
+	log_k 0
+Hum_saH = Hum_sa- + H+
+	log_k -4.1000
+Hum_saH + Ca+2 = Hum_saCa+ + H+
+	log_k -2.8400
+Hum_saH + Mg+2 = Hum_saMg+ + H+
+	log_k -2.8300
+Hum_saH + Al+3 = Hum_saAl+2 + H+
+	log_k -0.8200
+Hum_saH + Mn+2 = Hum_saMn+ + H+
+	log_k -1.5400
+Hum_saH + Co+2 = Hum_saCo+ + H+
+	log_k -1.3800
+Hum_saH + Ni+2 = Hum_saNi+ + H+
+	log_k -0.9300
+Hum_saH + Cu+2 = Hum_saCu+ + H+
+	log_k 0.6200
+Hum_saH + Zn+2 = Hum_saZn+ + H+
+	log_k -0.9500
+Hum_saH + Cd+2 = Hum_saCd+ + H+
+	log_k -0.9500
+Hum_saH + Pb+2 = Hum_saPb+ + H+
+	log_k -0.8000
+Hum_sbH = Hum_sbH
+	log_k 0
+Hum_sbH = Hum_sb- + H+
+	log_k -4.1000
+Hum_sbH + Ca+2 = Hum_sbCa+ + H+
+	log_k -2.8400
+Hum_sbH + Mg+2 = Hum_sbMg+ + H+
+	log_k -2.7000
+Hum_sbH + Al+3 = Hum_sbAl+2 + H+
+	log_k -0.3600
+Hum_sbH + Mn+2 = Hum_sbMn+ + H+
+	log_k -0.9600
+Hum_sbH + Co+2 = Hum_sbCo+ + H+
+	log_k -0.1600
+Hum_sbH + Ni+2 = Hum_sbNi+ + H+
+	log_k 0.6400
+Hum_sbH + Cu+2 = Hum_sbCu+ + H+
+	log_k 2.9600
+Hum_sbH + Zn+2 = Hum_sbZn+ + H+
+	log_k 0.3300
+Hum_sbH + Cd+2 = Hum_sbCd+ + H+
+	log_k 0.5300
+Hum_sbH + Pb+2 = Hum_sbPb+ + H+
+	log_k 0.1300
 PHASES
 Fix_H+
 	H+ = H+
