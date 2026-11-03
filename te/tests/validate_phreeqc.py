@@ -49,6 +49,12 @@ CASES.append(('soil_25C', base(pco2_si=-2.0, cec=0.05, solution=soil),
               {'metals': METALS}))
 CASES.append(('soil_10C', base(T=10, pco2_si=-2.0, cec=0.05, solution=soil),
               {'metals': METALS}))
+# acid soil: Al on the exchanger, gibbsite cap (Sabah, Vermont)
+acid = {'Na': 2e-4, 'K': 1e-4, 'Ca': 5e-4, 'Mg': 1.25e-4, 'Cl': 2e-3, 'Al': 2e-4,
+        'Ni': 1e-6, 'Cu': 1e-6}
+CASES.append(('acid_soil_Al', base(pco2_si=-2.0, cec=0.05, solution=acid,
+                                   minerals=['Gibbsite'], pH=[4.0, 4.3, 4.6, 4.9, 5.2, 5.5, 6.0]),
+              {'metals': ['Ni', 'Cu', 'Al']}))
 caps = {'Na': 1e-3, 'Cl': 1e-3, 'Cu': 1e-4, 'Zn': 1e-4, 'Pb': 1e-4}
 CASES.append(('caps', base(hfo=None, pco2_si=-2.0, solution=caps,
                            minerals=['Tenorite', 'Malachite', 'Cerussite',

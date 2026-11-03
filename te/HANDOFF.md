@@ -65,9 +65,18 @@ so one-way coupling holds for trace Ni and Cu. Note that the Ca front pushes Ni 
 Sabah pH-versus-leaching runs live in the project files (unpublished data, not in the repo).
 They point to Al exchange, Mn oxides and SOM as missing pieces in acid soils.
 
+Al exchange (done 3 Nov): AlX3 and AlOHX2 (phreeqc.dat constants) are in te_extra.dat, and an
+acid_soil_Al case with gibbsite checks them. Gotcha: PHREEQC gives an exchange species with
+`-gamma` the activity coefficient of the LAST aqueous token of its reaction rewritten in master
+species, scaled by that token's coefficient, and uses Davies when a = b = 0. So AlOHX2 gets the
+H+ term with coef -1 and a positive log g (system._ex_gamma). The column test now carries Ni, Cu,
+Pb and Cd with Al exchange and gibbsite; worst error 5e-5.
+Field check (acid soil, project files only): gibbsite-controlled Al matches the low NH4OAc Al;
+Fe-oxide sorption + exchange reproduce the Pb fall and flat Cd, but not the Ni fall (Ni tracks Mn
+and Co) or flat Cu, which points to Mn oxides (Ni) and SOM (Cu).
+
 Next steps:
-1. Al3+ on the exchanger and Al(OH)3 buffering for acid soils (Sabah, Vermont); without it the
-   control drifts in pH under rain.
+1. Arsenic (As(V)/As(III) on Hfo, minteq constants), then Mn-oxide sorption for Ni/Co.
 2. Release from host minerals for Ni and Cu, driven by SCEPTER's per-mineral dissolution rates
    (read from the amend() run output), then Vermont end to end.
 3. Per-soil Hfo site densities from Fe-oxide content: ~0.6 mol Fe/kgw if 1.5% Fe oxide were all ferrihydrite at

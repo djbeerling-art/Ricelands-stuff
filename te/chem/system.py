@@ -18,6 +18,42 @@ from . import thermo
 FIXED = ('H+', 'e-', 'H2O')
 
 
+def _ex_gamma(db, r, exm):
+    """PHREEQC's activity coefficient for an exchange species with -gamma
+    (model.cpp calc_gammas): log g = coef*(-A z^2 sqrt(mu)/(1 + a B sqrt(mu))
+    + b mu), or Davies (-coef z^2 A (sqrt(mu)/(1+sqrt(mu)) - 0.3 mu)) when
+    a = b = 0, where coef and z belong to the LAST aqueous token (not H2O) of
+    the reaction rewritten in master species. For CaX2 that is Ca+2 (coef 1,
+    z 2); for AlOHX2 it is H+ (coef -1), so its log g is positive.
+    Returns (a, b, coef, z, davies)."""
+    primaries = set(db.masters.values()) | {'H+', 'H2O', 'e-'}
+
+    def expand(sp, c, depth=0):
+        if sp in primaries or sp not in db.species or depth > 5:
+            return [(sp, c)]
+        rr = db.species[sp]
+        out = []
+        for t, v in rr.lhs:
+            out += expand(t, c * v, depth + 1)
+        for t, v in rr.rhs:
+            if t != sp:
+                out += expand(t, -c * v, depth + 1)
+        return out
+
+    toks = []
+    for sp, c in r.lhs:
+        if sp not in exm:
+            toks += expand(sp, c)
+    for sp, c in r.rhs:
+        if sp != r.defined and sp not in exm:
+            toks += expand(sp, -c)
+    toks = [(t, c) for t, c in toks if t not in ('H2O', 'e-')]
+    coef, zt = (toks[-1][1], thermo.charge(toks[-1][0])) if toks else (0.0, 0.0)
+    a, b = r.gamma
+    davies = a == 0 and b == 0
+    return (a, b, coef, zt, davies)
+
+
 def _base_elem(e):
     return re.sub(r'\(.*\)$', '', e)
 
@@ -216,7 +252,10 @@ def build(db, elements, redox='decoupled', valences=None, exchangers=(),
                 z.append(sum(row[basis.index(m)] for m in exm))
             else:
                 z.append(thermo.charge(name))
-            gam.append(r.gamma)
+            if kind == 'ex' and r.gamma is not None:
+                gam.append(_ex_gamma(db, r, exm))
+            else:
+                gam.append(r.gamma)
         nu = np.array(rows) if rows else np.zeros((0, len(basis)))
         return Group(kept, nu, None, np.array(z), gam, terms_l)
 

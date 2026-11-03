@@ -55,10 +55,14 @@ def log_gamma(group, mu, T, kind):
     for i, (z, g) in enumerate(zip(group.z, group.gamma)):
         if kind == 'surf':
             continue
-        if kind == 'ex':
+        if kind == 'ex':           # g = (a, b, coef, z, davies), see system._ex_gamma
             if g is None:
                 continue
-            out[i] = -A * z * z * s / (1 + B * g[0] * s) + g[1] * mu
+            a, b, coef, zt, davies = g
+            if davies:
+                out[i] = -coef * zt * zt * A * (s / (1 + s) - 0.3 * mu)
+            else:
+                out[i] = coef * (-A * zt * zt * s / (1 + B * a * s) + b * mu)
             continue
         if g is not None:        # WATEQ DH (PHREEQC -gamma a b); a = 0 gives
             # the limiting law, and a neutral species gets b*mu

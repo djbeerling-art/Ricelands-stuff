@@ -23,7 +23,7 @@ class ColumnResult:
 
 
 def run(sv, host, metals, init_totals, inflow_moles, *, cec=None, surfaces=None,
-        fix_si=(), T=298.15, pe=None):
+        fix_si=(), minerals=(), T=298.15, pe=None):
     """sv: solver.Speciator; host[k][i] = dict(pH, W, totals={label: mol},
     optional pe) for
     step k (k = 0 is the initial equilibrium) and cell i; init_totals[i] =
@@ -48,7 +48,8 @@ def run(sv, host, metals, init_totals, inflow_moles, *, cec=None, surfaces=None,
             totals = dict(h['totals'])
             totals.update({m: max(tot[i][m], 1e-30) for m in metals})
             r = sv.solve(totals, pH=h['pH'], W=h['W'], T=T, pe=h.get('pe', pe), cec=cec,
-                         surfaces=surfaces, fix_si=fix_si, guess=guesses[i])
+                         surfaces=surfaces, fix_si=fix_si, minerals=minerals,
+                         guess=guesses[i])
             guesses[i] = {b: v for b, v in r.la.items()}
             diss[i] = {}
             for j, m in enumerate(metals):

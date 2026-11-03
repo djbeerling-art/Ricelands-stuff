@@ -24,6 +24,12 @@ Ca+2 + 2 X- = CaX2
 Mg+2 + 2 X- = MgX2
 	log_k 0.6
 	-gamma 5.5 0.2
+Al+3 + 3 X- = AlX3
+	log_k 0.41
+	-gamma 9.0 0
+AlOH+2 + 2 X- = AlOHX2
+	log_k 0.89
+	-gamma 0 0
 Ni+2 + 2 X- = NiX2
 	log_k 0.62
 Cu+2 + 2 X- = CuX2

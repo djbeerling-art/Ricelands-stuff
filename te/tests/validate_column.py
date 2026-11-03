@@ -1,11 +1,13 @@
 """Benchmark the one-way coupled TE column (chem/column.py) against PHREEQC
 TRANSPORT.
 
-An acid soil column (20 cells; exchanger + Hfo; Ni and Cu loaded) is flushed
+An acid soil column (20 cells; exchanger with Al + Hfo + gibbsite; Ni, Cu, Pb
+and Cd loaded) is flushed
 with EW-like Ca-Mg-HCO3 water carrying no metals. PHREEQC solves the full
 problem. The Python column takes only the host state (pH, water, major-element
-system totals) from PHREEQC and moves and partitions Ni and Cu itself. Pass if
-total, dissolved and exchangeable Ni and Cu agree with PHREEQC everywhere to
+system totals, Al included) from PHREEQC and moves and partitions the
+metals itself. Pass if
+total, dissolved and exchangeable metal agree with PHREEQC everywhere to
 1% of the column's initial per-cell inventory (dissolved: of the initial
 dissolved), and the effluent to 1% of its peak.
 """
@@ -20,8 +22,8 @@ sys.path.insert(0, os.path.join(HERE, '..'))
 from chem import thermo, system, solver, column, phreeqc_ref as pr  # noqa: E402
 
 OUT = os.path.join(HERE, 'out')
-MAJ = ['Ca', 'Mg', 'K', 'Na', 'Cl', 'C']
-METALS = ['Ni', 'Cu']
+MAJ = ['Ca', 'Mg', 'K', 'Na', 'Cl', 'C', 'Al']
+METALS = ['Ni', 'Cu', 'Pb', 'Cd']
 NCELL, SHIFTS = 20, 60
 HFO = dict(weak=0.025, strong=6e-4, mass=11.0, area=600.0)
 SPEC = dict(
@@ -29,9 +31,11 @@ SPEC = dict(
     inflow={'pH': 7.5, 'Ca': 1.5e-3, 'Mg': 5e-4, 'C(4)': 4e-3, 'O(0)': 5e-4,
             'charge_on': 'C(4)'},
     soil={'pH': 5.0, 'Ca': 3e-4, 'Mg': 1e-4, 'K': 5e-5, 'Na': 2e-4, 'Cl': 1e-3,
-          'C(4)': 1e-4, 'O(0)': 5e-4, 'Ni': 2e-6, 'Cu': 1e-6, 'charge_on': 'Cl'},
+          'C(4)': 1e-4, 'O(0)': 5e-4, 'Al': 1e-4, 'Ni': 2e-6, 'Cu': 1e-6,
+          'Pb': 2e-7, 'Cd': 5e-8, 'charge_on': 'Cl'},
+    phases=[('Gibbsite', 0, 0.01)],
     cec=0.1, hfo=HFO, elements=MAJ + METALS, metals=METALS,
-    ex_species={'Ni': ['NiX2'], 'Cu': ['CuX2']})
+    ex_species={m: [m + 'X2'] for m in METALS})
 
 
 def host_state(r):
@@ -45,7 +49,7 @@ def main():
     t_ph = time.time() - t0
     db = thermo.read([pr.DB, pr.EXTRA])
     sy = system.build(db, MAJ + METALS, valences={'C': ['C(4)'], 'Cu': ['Cu(2)']},
-                      exchangers=['X'], surfaces=['Hfo_w', 'Hfo_s'])
+                      exchangers=['X'], surfaces=['Hfo_w', 'Hfo_s'], phases=['Gibbsite'])
     sv = solver.Speciator(sy)
     host = [[host_state(init)] * NCELL]
     host += [[host_state(rows[(k, i + 1)]) for i in range(NCELL)]
@@ -55,12 +59,12 @@ def main():
                                   HFO['area'], HFO['mass'])}
     t0 = time.time()
     res = column.run(sv, host, METALS, init_tot, {}, cec={'X': SPEC['cec']},
-                     surfaces=surf)
+                     surfaces=surf, minerals=['Gibbsite'])
     t_py = time.time() - t0
 
     lines = ['# TE column vs PHREEQC TRANSPORT', '',
              f'{NCELL} cells, {SHIFTS} shifts, pure advection; exchanger '
-             f"{SPEC['cec']} mol + Hfo ({HFO['mass']} g) per cell; acid soil "
+             f"{SPEC['cec']} mol + Hfo ({HFO['mass']} g) + gibbsite per cell; acid soil "
              'solution (pH 5) flushed with Ca-Mg-HCO3 water (pH 7.5), no metal inflow.',
              f'PHREEQC {t_ph:.1f} s, Python column {t_py:.1f} s.', '',
              '| metal | pool | max abs err / scale | scale (mol) |', '|---|---|---|---|']
@@ -105,11 +109,11 @@ def _plot(rows, res, init):
         import matplotlib.pyplot as plt
     except ImportError:
         return
-    fig, ax = plt.subplots(1, 3, figsize=(12, 3.6))
+    fig, ax = plt.subplots(1, 1 + len(METALS), figsize=(4 * (1 + len(METALS)), 3.6))
     x = np.arange(1, NCELL + 1)
     for k, ls in ((10, '-'), (30, '--'), (60, ':')):
         ax[0].plot(x, [rows[(k, i)]['pH'] for i in x], 'k' + ls, label=f'shift {k}')
-        for j, (m, c) in enumerate(zip(METALS, ('C0', 'C3'))):
+        for j, (m, c) in enumerate(zip(METALS, ('C0', 'C3', 'C2', 'C4'))):
             ax[1 + j].plot(x, [rows[(k, i)]['SYS_' + m] / init['SYS_' + m] for i in x],
                            color=c, ls=ls, label=f'PHREEQC, shift {k}')
             ax[1 + j].plot(x, res.pools['total'][k, :, j] / init['SYS_' + m], 'o',

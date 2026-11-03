@@ -105,6 +105,9 @@ def run_transport(spec):
         h = spec['hfo']
         L += [f'SURFACE 1-{n}', f"  Hfo_wOH {h['weak']} {h['area']} {h['mass']}",
               f"  Hfo_sOH {h['strong']}", '  -equilibrate 1']
+    if spec.get('phases'):
+        L.append(f'EQUILIBRIUM_PHASES 1-{n}')
+        L += [f'  {p} {si} {amt}' for p, si, amt in spec['phases']]
     L.append('END')
     names = ['sim', 'step', 'cell', 'pH', 'pe', 'W']
     punch = ['10 PUNCH SIM_NO, STEP_NO, CELL_NO, -LA("H+"), -LA("e-"), TOT("water")']
@@ -123,6 +126,8 @@ def run_transport(spec):
     L += sel + ['USE solution 1', 'USE exchange 1']
     if spec.get('hfo'):
         L.append('USE surface 1')
+    if spec.get('phases'):
+        L.append('USE equilibrium_phases 1')
     L.append('END')
     L += ['TRANSPORT', f'  -cells {n}', f"  -shifts {spec['shifts']}",
           '  -dispersivity 0', '  -diffusion_coefficient 0',
