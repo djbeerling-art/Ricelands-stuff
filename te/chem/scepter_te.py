@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from . import humic, solver
+from . import clay, humic, solver
 
 MW_INRT = 258.162          # SCEPTER 'inrt' is kaolinite (mwtka)
 SCEPTER_AQ = {'ca': 'Ca', 'mg': 'Mg', 'k': 'K', 'na': 'Na', 'al': 'Al', 'si': 'Si',
@@ -125,6 +125,7 @@ class TEResult:
     surfaces: object = None                       # cell -> {name: Surface}
     cec_x: object = None                          # snap -> exchanger charge per cell
     labels: dict = field(default_factory=dict)    # metal -> solver label
+    la: list = field(default_factory=list)        # per snapshot: per-cell {basis species: log activity}
 
     def mgkg(self, pool, k, snap):
         """Pool at output k in mg per kg soil, (cell, metal)."""
@@ -140,7 +141,7 @@ def _dens(snap):
 def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         fe_reactive=0.1, hmo_g_per_kg=0.0, hum_g_per_kg=0.0, extra_totals=None, minerals=(),
         valence_labels=None, courant=0.9, T=None, max_sub=None, cec_mode='total',
-        slow=None, implicit_sub=None, dom=None):
+        slow=None, implicit_sub=None, dom=None, clay_g_per_kg=0.0):
     """Run trace metals through SCEPTER snapshots.
 
     sv        : solver.Speciator built with the majors, metals, X, Hfo_w/Hfo_s,
@@ -165,6 +166,9 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
                 per cell and metal at t0 so that the initial state is steady
                 (release from S balances ageing plus net leaching from the cell),
                 i.e. the control keeps its labile metal under the initial forcing.
+    clay_g_per_kg : 2:1 clay (smectite + illite) per kg soil, giving 2SPNE edge
+                sites (chem.clay; clay.add_clay must have been applied to the
+                database and Clay_s/Clay_w given to the speciator)
     dom       : optional dissolved organic matter, {'doc_ref': mg C/L, 'pH_ref': pH,
                 'slope': d log10(DOC)/d pH}. A mobile copy of the humic surface
                 (humic.add_dom must have been applied to the database and the Dom_*
@@ -212,6 +216,8 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         if hmo_g_per_kg > 0:
             g = hmo_g_per_kg * soil_kg[i]
             surf['Hmo'] = solver.Surface({'Hmo_x': g * 2.1e-3 * 0.64, 'Hmo_y': g * 2.1e-3 * 0.36}, 746.0, g)
+        if clay_g_per_kg > 0:
+            surf['Clay'] = clay.surface(clay_g_per_kg * soil_kg[i])
         h = hum[i] * soil_kg[i]
         if h > 0:
             surf['Hum'] = humic.surface(h)
@@ -324,6 +330,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         res.released.append(cum_rel.copy())
         res.leached.append(cum_lea.copy())
         res.host.append(hostt)
+        res.la.append([dict(g) if g else {} for g in guesses])   # log activities of basis species per cell
     res.surfaces = surfaces
     res.cec_x = cec_x
     res.labels = lab

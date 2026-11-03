@@ -133,6 +133,10 @@ ROCKS = {  # SCEPTER mineral recipes (wt fraction)
               ('mgn', 0.022), ('cc', 0.009)],
 }
 SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
+# TE_SECONDARY="+amfe3,cabd,mgbd,amal" adds precipitating phases (ferrihydrite-like
+# amorphous Fe(III), Ca/Mg beidellite smectite, amorphous Al hydroxide)
+if os.environ.get('TE_SECONDARY', '').startswith('+'):
+    SECONDARY = SECONDARY + os.environ['TE_SECONDARY'][1:].split(',')
 
 
 def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
