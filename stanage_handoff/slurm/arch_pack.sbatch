@@ -44,7 +44,7 @@ PY
 # LOCALRUN=0 runs directly on $SCEPTER_OUT as before.
 sync_out() {   # <local SCEPTER_OUT> <arch> <status>: directories of this archetype only (others untouched)
     rsync -a --delete --include="flood_*_$2/***" --include="flood_*_$2_*/***" --exclude='*' $1/paddy/ $SCEPTER_OUT/paddy/ || return 1
-    for x in .txt .args _spin.log _settle.txt; do [ ! -f $1/st$x ] || cp $1/st$x "${3%.txt}$x" || return 1; done
+    for x in .txt .args _spin.log _settle.txt _fe3y3.txt; do [ ! -f $1/st$x ] || cp $1/st$x "${3%.txt}$x" || return 1; done
 }
 attempt() {    # <arch> <args> <nudge> <status>
     local a=$1 L
@@ -55,7 +55,7 @@ attempt() {    # <arch> <args> <nudge> <status>
     find $SCEPTER_OUT/paddy -maxdepth 1 \( -name "flood_*_$a" -o -name "flood_*_${a}_*" \) -exec cp -a -t $L/paddy/ {} + ||
         { echo "$a: copy to local disk failed, running on scratch" >> $STATUS_DIR/$a.log; rm -rf $L
           NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $4 >> $STATUS_DIR/$a.log 2>&1; return; }
-    for x in .txt .args _spin.log _settle.txt; do [ -f "${4%.txt}$x" ] && cp "${4%.txt}$x" $L/st$x; done
+    for x in .txt .args _spin.log _settle.txt _fe3y3.txt; do [ -f "${4%.txt}$x" ] && cp "${4%.txt}$x" $L/st$x; done
     ( while sleep $(( ${SYNCMIN:-20}*60 )); do sync_out $L $a $4; done ) & local sp=$!
     SCEPTER_OUT=$L/ NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $L/st.txt >> $STATUS_DIR/$a.log 2>&1
     local rc=$?

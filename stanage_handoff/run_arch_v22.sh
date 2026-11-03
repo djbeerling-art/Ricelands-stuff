@@ -79,6 +79,32 @@ b = [0.] + [(z[i] + z[i+1])/2 for i in range(len(z) - 1)] + [z[-1] + (z[-1] - z[
 print(sum(v[i]*max(0., min(b[i+1], zmax) - b[i]) for i in range(len(z))))
 PY
 }
+# Per-archetype Fe(III) balance (David, 3 Nov 2026), for archetypes whose settle ran past ~20 yr: v25b has no Fe return
+# from below the pan (Fe-illuvial subsoil, capillary rise) and fixes irrigation/sediment Fe at fe3in 0.3, so cool, high-OM
+# soils settle only once their reducible Fe(III) is exhausted (control CH4 x5), which long-cultivated paddies never reach.
+# FEBAL=1: an 8-yr probe settle (fp22_<a>, default fe3in) gives the whole-column amfe3 loss over years 3-8, and the settle
+# and dose chains then use fe3in = 0.3 + that net loss, capped at FEMAX (default 1) mol/m2/yr, appended to the args (kept
+# in <status>.args). Status line "fb22_<a> rc 0 loss L fe3in X". Use with the GMD settle cap (SMAX=12 FETOL=off).
+if [ -n "${FEBAL:-}" ] && ! ok fb22_$a; then
+  # run_chain prunes the previous fallow's profiles each year, so read year 3 before running on to year 8 (resumes)
+  F3="${ST%.txt}_fe3y3.txt"
+  if [ ! -s "$F3" ]; then
+    paddy/multiyear/run_chain.sh fp22_$a 3 0 gs22_$a "$ST" $PROD $P21 $args $(kaq) || exit 1
+    FEZ=99 fe3 $SCEPTER_OUT/paddy/flood_fp22_${a}_y3f > "$F3" || exit 1
+  fi
+  paddy/multiyear/run_chain.sh fp22_$a 8 0 gs22_$a "$ST" $PROD $P21 $args $(kaq) || exit 1
+  r=$(python3 - $(cat "$F3") $(FEZ=99 fe3 $SCEPTER_OUT/paddy/flood_fp22_${a}_y8f) ${FEMAX:-1} <<'PY'
+import sys
+f3, f8, cap = map(float, sys.argv[1:])
+loss = max((f3 - f8)/5, 0.)
+print('%.4f %.3f' % (loss, min(0.3 + loss, cap)))
+PY
+) || exit 1
+  set -- $r
+  for y in $(seq 1 8); do rm -rf $SCEPTER_OUT/paddy/flood_fp22_${a}_y${y}[sf]; done
+  args="$(echo "$args" | sed 's/ *--fe3in=[0-9.]*//') --fe3in=$2"; echo "$args" > "$AF"
+  echo "fb22_$a rc 0 loss $1 fe3in $2" >> "$ST"
+fi
 if ! ok st22_${a}_set; then
   Y=0; cv=0; SL="${ST%.txt}_settle.txt"; touch "$SL"
   for n in $(seq ${SMIN:-7} ${SMAX:-80}); do
