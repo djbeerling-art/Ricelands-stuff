@@ -12,6 +12,7 @@
 #SBATCH --account=default
 #SBATCH --output=logs/as_factorial_%A_%a.out
 module purge; module load GCC/12.3.0 OpenBLAS/0.3.23-GCC-12.3.0 Python/3.11.3-GCCcore-12.3.0
+export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1   # one BLAS thread per SCEPTER process: multithreaded OpenBLAS stalls basalt seasons (PSD step collapses dt)
 python3 -c 'import numpy' || exit 1
 [ -x scepter_paddy_fast_p ] || { echo "build scepter_paddy_fast_p first" >&2; exit 1; }
 export SCEPTER_OUT=${SCEPTER_OUT:-/mnt/parscratch/users/$USER/scepter_as/}
