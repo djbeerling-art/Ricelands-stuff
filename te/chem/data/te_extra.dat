@@ -1,0 +1,43 @@
+# SCEPTER-TE additions, read after minteq.v4.dat by both PHREEQC and te/chem.
+# Gaines-Thomas exchange constants: Appelo & Postma (2005) Table 6.4, as in
+# phreeqc.dat / wateq4f.dat (Ni from A&P). -gamma for majors as phreeqc.dat.
+EXCHANGE_MASTER_SPECIES
+X X-
+EXCHANGE_SPECIES
+X- = X-
+	log_k 0
+Na+ + X- = NaX
+	log_k 0
+	-gamma 4.08 0.082
+K+ + X- = KX
+	log_k 0.7
+	-gamma 3.5 0.015
+H+ + X- = HX
+	log_k 1.0
+	-gamma 9.0 0
+NH4+ + X- = NH4X
+	log_k 0.6
+	-gamma 2.5 0
+Ca+2 + 2 X- = CaX2
+	log_k 0.8
+	-gamma 5.0 0.165
+Mg+2 + 2 X- = MgX2
+	log_k 0.6
+	-gamma 5.5 0.2
+Ni+2 + 2 X- = NiX2
+	log_k 0.62
+Cu+2 + 2 X- = CuX2
+	log_k 0.6
+Zn+2 + 2 X- = ZnX2
+	log_k 0.8
+Cd+2 + 2 X- = CdX2
+	log_k 0.8
+Pb+2 + 2 X- = PbX2
+	log_k 1.05
+PHASES
+Fix_H+
+	H+ = H+
+	log_k 0
+Fix_pe
+	e- = e-
+	log_k 0

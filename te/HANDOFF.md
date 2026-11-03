@@ -1,4 +1,4 @@
-# SCEPTER-TE handoff (3 Nov 2026)
+# SCEPTER-TE handoff (updated 3 Nov 2026)
 
 Goal (David): short paper on trace-element (Ni, Cr, Cu, Zn, Cd, Pb) build-up under basalt
 enhanced weathering in AERATED upland soils, as a mechanistic answer to Dupla et al. 2023
@@ -20,3 +20,38 @@ Status:
   N fertiliser (NH4NO3) without base drives pH to 2.4: needs liming or skip N.
 - Gotchas: rstrt must be an absolute path; every aq species needs a nonzero rain conc
   (1e-20; Fe3+ 1e-21) or the run goes NaN; cec.in needs 5 logK values + beta.
+
+Scope decisions (David, 3 Nov; also in the plan doc):
+- Staged build. Phase 1 is Ni + Cu (release, speciation, Fe-oxide sorption, exchange, transport),
+  validated against PHREEQC, Kelland 2020 and Vienne 2022. Phase 2 is Zn, Cd, Pb + OM binding,
+  DOC transport and plant uptake. Phase 3 is Cr (Cr(III) release, Mn-oxide and redox-kinetics
+  sensitivity of Cr(VI)).
+- Labile = exchangeable + weakly/reversibly sorbed. Strong-site, high-affinity SOM and aged metal
+  are reported separately; the boundary between them is a sensitivity parameter.
+- Headline result: whether Dupla-style screening and the mechanistic model agree on the risk class
+  for each soil x basalt x dose (not threshold dates).
+- Dupla PDF and the plan .docx are in the project files: /mnt/project-files/te/refs/.
+
+Chemistry prototype (te/chem, see te/chem/README.md):
+- Reads minteq.v4.dat + te/chem/data/te_extra.dat directly, so its constants are PHREEQC's.
+  Fixed-pH Newton solver: aqueous speciation, Gaines-Thomas exchange, D&M DLM on Hfo (w/s),
+  fixed-SI components (CO2(g)) and mineral solubility caps (active set). Redox is 'decoupled'
+  by default (Cr(3)/Cr(6) as separate components) or 'coupled' at a fixed pe. ~10 ms/solve.
+- python3 te/tests/validate_phreeqc.py runs batch pH edges (pH 4-8) against PHREEQC:
+  Ni/Cu/Zn/Cd/Pb/Cr(VI)/Cr(III) on Hfo, 0.5 kg water, a soil-like mix with exchange and
+  pCO2 at 10 and 25 C, and malachite/cerussite/smithsonite caps. Worst pool-fraction error
+  1.2e-5, free ion within 2e-4. Results: te/tests/out/validation.md, pH_edges.png.
+- PHREEQC gotchas: MOL() returns mol/kgw for exchange and surface species too. minteq's
+  "-gamma 0 0" means the DH limiting law (log gamma 0 for neutral species), not Davies.
+  Don't fix a high pe with Fix_pe/O2(g) (PHREEQC fails); use O2(g) SI instead.
+  Cu needs Cu(2) as its decoupled valence.
+
+Next steps:
+1. Phase 1 transport: a 1-D column (advection + tillage mixing) calling the solver per cell,
+   checked against PHREEQC TRANSPORT with exchange + Hfo (as for ex11).
+2. Release from host minerals for Ni and Cu, driven by SCEPTER's per-mineral dissolution rates
+   (read from the amend() run output).
+3. Per-soil Hfo site densities from Fe-oxide content: ~0.6 mol Fe/kgw if 1.5% Fe oxide were all ferrihydrite at
+   field moisture, far above the 1 mmol used in the tests, so sorption will dominate over
+   exchange in most soils.
+4. Fortran port into SCEPTER as the one-way module.
