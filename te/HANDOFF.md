@@ -53,13 +53,23 @@ Field Ni check (te/studies/ni_batch_field.py, output alongside), closed batch, e
 - Sabah (P2): observed 0.23x (2018->2024, pH 5.5->5.74). Closed batch gives only 0.7-0.95x, but
   higher Ca triples porewater Ni (~100 -> 300 ug/L). At ~1 m/yr drainage that leaches ~3 kg Ni/ha/yr,
   about the whole 0-10 cm exchangeable pool, so Ca displacement + leaching is the likely mechanism.
-  Testing this needs the transport column (next step 1). Al exchange and SOM binding are not in yet.
+  Tested in the transport column (below). Al exchange and SOM binding are not in yet.
+
+Transport column (done 3 Nov): `te/chem/column.py` is the one-way coupled column. The host gives
+pH, water and major-element system totals per cell and step; the TE module advects the dissolved
+metal (Courant 1, as PHREEQC shifts) and re-partitions it. `te/tests/validate_column.py` runs
+an acid soil column (20 cells, exchanger + Hfo, Ni and Cu loaded) flushed with Ca-Mg-HCO3 water
+in PHREEQC TRANSPORT and in the Python column driven by PHREEQC's host state: worst error 5e-5,
+so one-way coupling holds for trace Ni and Cu. Note that the Ca front pushes Ni ahead of it
+(effluent Ni peaks at ~3.7x the initial porewater).
+Sabah pH-versus-leaching runs live in the project files (unpublished data, not in the repo).
+They point to Al exchange, Mn oxides and SOM as missing pieces in acid soils.
 
 Next steps:
-1. Phase 1 transport: a 1-D column (advection + tillage mixing) calling the solver per cell,
-   checked against PHREEQC TRANSPORT with exchange + Hfo (as for ex11).
+1. Al3+ on the exchanger and Al(OH)3 buffering for acid soils (Sabah, Vermont); without it the
+   control drifts in pH under rain.
 2. Release from host minerals for Ni and Cu, driven by SCEPTER's per-mineral dissolution rates
-   (read from the amend() run output).
+   (read from the amend() run output), then Vermont end to end.
 3. Per-soil Hfo site densities from Fe-oxide content: ~0.6 mol Fe/kgw if 1.5% Fe oxide were all ferrihydrite at
    field moisture, far above the 1 mmol used in the tests, so sorption will dominate over
    exchange in most soils.

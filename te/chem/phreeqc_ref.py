@@ -78,3 +78,64 @@ def run(case, species):
         row = dict(zip(names, arr[-1]))
         rows.append(row)
     return rows
+
+
+def run_transport(spec):
+    """1-D advective column in PHREEQC TRANSPORT (no dispersion, Courant 1).
+    spec: ncell, shifts, inflow {label: mol/kgw, 'pH':, 'charge':},
+    soil {same}, cec (mol per cell), hfo dict or None, elements (SYS
+    output), metals, ex_species {metal: [exchange species]}.
+    Returns (init_row, rows) where rows[(shift, cell)] = dict."""
+    extra = open(EXTRA).read()
+
+    def sol(n, s):
+        out = [f'SOLUTION {n}', '  units mol/kgw', f"  pH {s['pH']}", '  pe 12']
+        for k, v in s.items():
+            if k in ('pH',):
+                continue
+            out.append(f'  {k} {v}' + (' charge' if k == s.get('charge_on') else ''))
+        return [l for l in out if not l.strip().startswith('charge_on')]
+
+    n = spec['ncell']
+    L = [extra]
+    L += sol(0, spec['inflow'])
+    L += sol(f'1-{n}', spec['soil'])
+    L += [f'EXCHANGE 1-{n}', f"  X {spec['cec']}", '  -equilibrate 1']
+    if spec.get('hfo'):
+        h = spec['hfo']
+        L += [f'SURFACE 1-{n}', f"  Hfo_wOH {h['weak']} {h['area']} {h['mass']}",
+              f"  Hfo_sOH {h['strong']}", '  -equilibrate 1']
+    L.append('END')
+    names = ['sim', 'step', 'cell', 'pH', 'pe', 'W']
+    punch = ['10 PUNCH SIM_NO, STEP_NO, CELL_NO, -LA("H+"), -LA("e-"), TOT("water")']
+    ln = 20
+    for e in spec['elements']:
+        punch.append(f'{ln} PUNCH SYS("{e}")'); names.append('SYS_' + e); ln += 1
+    for m in spec['metals']:
+        exs = ' + '.join(f'MOL("{x}")' for x in spec['ex_species'][m])
+        punch.append(f'{ln} PUNCH TOT("{m}"), {exs}')
+        names += ['TOT_' + m, 'EX_' + m]
+        ln += 1
+    head = ' '.join(f'"{x}"' for x in names)
+    sel = ['USER_PUNCH', '-headings ' + head] + punch + \
+          ['SELECTED_OUTPUT', '-reset false', '-high_precision true']
+    # batch re-equilibration of cell 1 gives the initial state (all cells equal)
+    L += sel + ['USE solution 1', 'USE exchange 1']
+    if spec.get('hfo'):
+        L.append('USE surface 1')
+    L.append('END')
+    L += ['TRANSPORT', f'  -cells {n}', f"  -shifts {spec['shifts']}",
+          '  -dispersivity 0', '  -diffusion_coefficient 0',
+          f'  -punch_cells 1-{n}', '  -punch_frequency 1', 'END']
+    ip = _ip()
+    ip.run_string('\n'.join(L))
+    arr = ip.get_selected_output_array()
+    hdr, data = arr[0], arr[1:]
+    init, rows = None, {}
+    for a in data:
+        r = dict(zip(names, a))
+        if int(r['sim']) == 2:
+            init = r
+        elif int(r['sim']) == 3 and int(r['step']) > 0:
+            rows[(int(r['step']), int(r['cell']))] = r
+    return init, rows
