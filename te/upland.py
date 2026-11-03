@@ -89,16 +89,27 @@ if __name__ == '__main__':
 
 
 # Feedstock grain size as SCEPTER dust PSD (lognormal in radius).
-# Pioneer Valley basalt (Zacharias): 61.4% < 150 um, 38.5% < 75 um -> lognormal
-# fit D50 = 106 um, sigma_ln = 1.19 (sd log10 = 0.517), P80 = 290 um.
-PSD = {'pioneer': [(53e-6, 0.517, 1)]}
+# Pioneer Valley basalt (Zacharias et al. 2026 SI Table S2c sieve data, 75 um to
+# 4.75 mm): lognormal fit D50 = 106 um, sigma_ln = 1.16 (sd log10 = 0.503),
+# P80 = 281 um (283 um by interpolation); max misfit 0.6% passing.
+# Blue Ridge metabasalt (Corn Belt; Beerling et al. 2024): P80 = 267 um. Spread
+# not reported: sigma_ln 1.16 assumed (as Pioneer Valley) -> D50 = 101 um.
+PSD = {'pioneer': [(53e-6, 0.503, 1)],
+       'blueridge': [(50e-6, 0.503, 1)]}
 
 ROCKS = {  # SCEPTER mineral recipes (wt fraction)
     'hillhouse': [('la', 0.346), ('agt', 0.327), ('fo', 0.147), ('anl', 0.071)],
-    # Pioneer Valley metabasalt (Vermont trial, Zacharias et al.): plagioclase +
-    # clinopyroxene with chlorite as the main alteration phase, no olivine.
-    # Approximate split from the XRD description; the rest is treated as inert.
-    'pioneer': [('la', 0.45), ('agt', 0.30), ('clch', 0.08)],
+    # Pioneer Valley metabasalt (Vermont; Zacharias et al. 2026 SI Table S2b,
+    # thin-section point count): clinopyroxene 35.1 (as augite), plagioclase 33.7
+    # (as labradorite), sericite 10.6 (as muscovite), chlorite 9.2, actinolite 6.7
+    # (as tremolite), Fe-Ti oxides 3.8 (as magnetite), quartz 0.9 %.
+    'pioneer': [('agt', 0.351), ('la', 0.337), ('mscv', 0.106), ('clch', 0.092),
+                ('tm', 0.067), ('mgn', 0.038), ('qtz', 0.009)],
+    # Blue Ridge metabasalt (Corn Belt), Dataset S1 XRD (Southampton): chlorite 34,
+    # albite 23.3, epidote (piemontite) 17.8, actinolite 11.9 (as tremolite),
+    # quartz 9, calcite 2.6, muscovite 1.4 wt%.
+    'blueridge': [('clch', 0.34), ('ab', 0.233), ('ep', 0.178), ('tm', 0.119),
+                  ('qtz', 0.09), ('cc', 0.026), ('mscv', 0.014)],
 }
 SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
 
