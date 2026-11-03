@@ -59,8 +59,12 @@ def profs(run, kind):
     return [(h, a) for h, a, _ in out if len(h) == a.shape[1]]
 
 def sites(run):
-    try: v = [float(x) for x in open(os.path.join(run, 'as_sites.in')).read().split()]
-    except OSError: v = []
+    try: lines = open(os.path.join(run, 'as_sites.in')).read().splitlines()
+    except OSError: lines = []
+    v = []
+    for l in lines:   # header line (text) then 'f [fgt]'; keep the first all-numeric line
+        try: v = [float(x) for x in l.split()]; break
+        except ValueError: continue
     return (v[0] if v else 1.0), (v[1] if len(v) > 1 else 0.02)
 
 def kd3(run):
