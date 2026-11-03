@@ -84,13 +84,18 @@ if __name__ == '__main__':
 
 ROCKS = {  # SCEPTER mineral recipes (wt fraction)
     'hillhouse': [('la', 0.346), ('agt', 0.327), ('fo', 0.147), ('anl', 0.071)],
+    # Pioneer Valley metabasalt (Vermont trial, Zacharias et al.): plagioclase +
+    # clinopyroxene with chlorite as the main alteration phase, no olivine.
+    # Approximate split from the XRD description; the rest is treated as inert.
+    'pioneer': [('la', 0.45), ('agt', 0.30), ('clch', 0.08)],
 }
 SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
 
 
 def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
-          cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10):
-    """Restart from spin-up and apply rock continuously at dose t/ha/yr."""
+          cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10, pulse=None):
+    """Restart from spin-up and apply rock continuously at dose t/ha/yr, or,
+    with pulse = tau (yr, < 1), once: dose t/ha spread over the first tau years."""
     d = os.path.join(OUT, name)
     if os.path.exists(d):
         shutil.rmtree(d)
@@ -98,7 +103,8 @@ def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
     for sub in ('flx',):
         shutil.rmtree(os.path.join(d, sub), ignore_errors=True)
     minerals = [m for m, _ in ROCKS[rock]] if dose > 0 else []
-    write_common(name, ttot=years, temp=temp, fdust=dose * 100., taudust=years,
+    write_common(name, ttot=years, temp=temp, fdust=dose * 100.,
+                 taudust=pulse if pulse else years,
                  omrain=omrain, poro=0.5, moist=moist, q=q, w=w, zdust=zdust,
                  restart='true', rstrt=os.path.join(OUT, spin), mix=3, cec=cec, ca_rain=ca_rain,
                  n_rain=0., sld=minerals + SECONDARY, dust=ROCKS[rock] if dose > 0 else [],
