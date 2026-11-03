@@ -21,12 +21,24 @@ ok(){ grep -q "^$1 rc 0" "$st" 2>/dev/null; }
 # year y uses <stem>_y<y+CLIM_YOFF>.csv (clamped to the available years); otherwise --clim is used unchanged.
 CLIM0=$(printf '%s\n' "$@" | grep '^--clim=' | tail -1 | cut -d= -f2)
 CLIMN=0; [ -n "$CLIM0" ] && [ -f "${CLIM0%.csv}_y1.csv" ] && CLIMN=$(ls ${CLIM0%.csv}_y*.csv | wc -l)
+# Dynamic Fe return (FERET=1, David 3 Nov 2026): v25b has no Fe return from below the pan (Fe-illuvial subsoil, capillary
+# rise, deeper tillage) and a fixed irrigation/sediment Fe(III) input (--fe3in), so plough-layer Fe drains away over
+# decades and the control's CH4 climbs. With FERET set, each year's --fe3in (ferrihydrite to the plough layer, with the
+# OM input) is the net Fe that left the plough layer (z <= FERET_Z m, default 0.2) the year before, by transport across
+# the pan, leaching and floodwater discharge (paddy/multiyear/fe_loss.py on the season + fallow zint files), floored at 0
+# and capped at FERET_MAX (default 5) mol m-2 yr-1. The value is kept in the fallow's run dir (feret.txt), so it follows
+# the restart state into the settle, the dose-chain copies and future-climate runs; a start without one (fresh spin-up)
+# uses the --fe3in in the options. Status lines "<name>_y<n>f feret <value>". Same rule for control and treatment.
+fe_in(){ [ -n "${FERET:-}" ] && [ -s $SCEPTER_OUT/paddy/flood_$1/feret.txt ] && echo "--fe3in=$(cat $SCEPTER_OUT/paddy/flood_$1/feret.txt)"; }
 ARGS0=("$@")
 for y in $(seq 1 $ny); do
   ts=${name}_y${y}s; tf=${name}_y${y}f
   if [ $CLIMN -gt 0 ]; then
     k=$(( y + ${CLIM_YOFF:-0} )); [ $k -lt 1 ] && k=1; [ $k -gt $CLIMN ] && k=$CLIMN
     set -- $(printf '%s\n' "${ARGS0[@]}" | sed "s#^--clim=.*#--clim=${CLIM0%.csv}_y$k.csv#")
+  fi
+  if [ -n "${FERET:-}" ]; then   # later options win, so the returned Fe overrides --fe3in for this year's season and fallow
+    FI=$(fe_in $prev); [ -n "$FI" ] && set -- $(printf '%s\n' "$@" | grep -v '^--fe3in=') $FI
   fi
   if ! ok $ts; then
     # puddling before transplanting mixes the plough layer (TILL = depth in m, default 0.16; 0 = no tillage)
@@ -46,6 +58,11 @@ for y in $(seq 1 $ny); do
     if [ $y -gt 1 ]; then if [ -n "${KEEPALK:-}" ]; then paddy/prune_run.sh season $SCEPTER_OUT/paddy/flood_${name}_y$((y-1))[sf]
       else find $SCEPTER_OUT/paddy/flood_${name}_y$((y-1))[sf]/prof -type f -delete 2>/dev/null; fi; fi
     echo "$tf rc $rc" >> "$st"; [ $rc = 0 ] || exit 1
+    if [ -n "${FERET:-}" ]; then
+      L=$(python3 paddy/multiyear/fe_loss.py $SCEPTER_OUT/paddy/flood_$ts $SCEPTER_OUT/paddy/flood_$tf --z=${FERET_Z:-0.2}) || exit 1
+      python3 -c "print('%.4f' % min(max($L, 0.), ${FERET_MAX:-5}))" > $SCEPTER_OUT/paddy/flood_$tf/feret.txt
+      echo "$tf feret $(cat $SCEPTER_OUT/paddy/flood_$tf/feret.txt) loss $L" >> "$st"
+    fi
   fi
   # keep only what ghg_budget.py reads (a season run is ~50 MB unpruned); the latest fallow keeps its restart state
   # NOPRUNE=1 (environment) keeps every output of the latest year (verification, process figures)
