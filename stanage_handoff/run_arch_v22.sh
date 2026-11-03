@@ -66,13 +66,17 @@ c = lambda k: float((d[:, h.index(k)]*dt).sum()) if k in h else 0.0
 print(c('dif') + c('ch4eb') + c('ch4pl'))
 PY
 }
-fe3(){ python3 - "$1" <<'PY'
+# reducible Fe(III) stock of the plough layer (z <= FEZ m, default 0.2): dz-weighted amfe3, cell bounds at node midpoints
+fe3(){ python3 - "$1" "${FEZ:-0.2}" <<'PY'
 import sys
-f = sys.argv[1] + '/prof/prof_sld-save.txt'
+f, zmax = sys.argv[1] + '/prof/prof_sld-save.txt', float(sys.argv[2])
 L = open(f).read().splitlines(); h = L[0]
 names = ['z'] + [h[4+5*i:9+5*i].strip() for i in range((len(h.rstrip())-4)//5)]
 j = names.index('amfe3')
-print(sum(float(l.split()[j]) for l in L[1:] if l.strip()))
+r = [l.split() for l in L[1:] if l.strip()]
+z = [float(x[0]) for x in r]; v = [float(x[j]) for x in r]
+b = [0.] + [(z[i] + z[i+1])/2 for i in range(len(z) - 1)] + [z[-1] + (z[-1] - z[-2])/2]
+print(sum(v[i]*max(0., min(b[i+1], zmax) - b[i]) for i in range(len(z))))
 PY
 }
 if ! ok st22_${a}_set; then
