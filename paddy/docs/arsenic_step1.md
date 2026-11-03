@@ -45,6 +45,7 @@ pH and Si are clamped to the fitted range. In the fitted model:
 - As is trace relative to sites, so As(III) and As(V) do not compete with each other. Loading in the fit grid is below 5%.
 - Si sorption is not removed from solution. Porewater Si comes from SCEPTER's own balance.
 - SCEPTER carries no dynamic P. Phosphate enters only as a fixed background competitor, through As sorption constants refitted at labile P/Fe 0.02 and 0.1 (`kd_constants_Pr*.json`, `--askd`). There is no carbonate or DOC competition.
+- Scope: the model predicts changes in root As(III) uptake under flooded conditions. It does not yet predict total root arsenic uptake or grain inorganic arsenic. Before extending to alternate wetting and drying, add a simple As(V) uptake pathway with phosphate inhibition (As(V) matters more during drainage).
 - Not represented (state as limitations): Mn oxides (As(III) oxidation and sorption in drained phases), Ca/Mg-arsenate precipitation and Ca-bridged arsenate sorption, As(V) root uptake via phosphate transporters, transient P release with Fe reduction, and grain partitioning.
 - The redox rate constants are provisional: `as5rd` 50 /yr and `as3ox` 1000 /yr with O2 half-saturation 2e-5 M. They are not calibrated.
 - The `as3up` constants are placeholders: Vmax 5e-3 mol m-2 yr-1 and Km 30 µM.
