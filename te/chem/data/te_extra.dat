@@ -40,6 +40,20 @@ Cd+2 + 2 X- = CdX2
 	log_k 0.8
 Pb+2 + 2 X- = PbX2
 	log_k 1.05
+SURFACE_SPECIES
+# Anions competing with arsenate on Hfo, not in minteq.v4.
+# Carbonate: Van Geen et al. (1994) re-optimised for D&M (phreeqc.dat).
+Hfo_wOH + CO3-2 + H+ = Hfo_wCO3- + H2O
+	log_k 12.56
+Hfo_wOH + CO3-2 + 2 H+ = Hfo_wHCO3 + H2O
+	log_k 20.62
+# Silicate: Swedlund & Webster (1999) (wateq4f.dat).
+Hfo_wOH + H4SiO4 = Hfo_wH3SiO4 + H2O
+	log_k 4.28
+Hfo_wOH + H4SiO4 = Hfo_wH2SiO4- + H+ + H2O
+	log_k -3.22
+Hfo_wOH + H4SiO4 = Hfo_wHSiO4-2 + 2 H+ + H2O
+	log_k -11.69
 PHASES
 Fix_H+
 	H+ = H+

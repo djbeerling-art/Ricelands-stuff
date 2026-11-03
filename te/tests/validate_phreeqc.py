@@ -46,6 +46,10 @@ CASES.append(('edge_AsV', base(solution={'Na': 0.01, 'Cl': 0.011, 'As(5)': 1e-6}
               {'metals': ['As(5)'], 'free': 'H2AsO4-'}))
 CASES.append(('edge_AsIII', base(pe=0, solution={'Na': 0.01, 'Cl': 0.011, 'As(3)': 1e-6}),
               {'metals': ['As'], 'redox': 'coupled', 'free': 'H3AsO3'}))
+# As(V) with competing phosphate, silicate (basalt) and bicarbonate (pCO2 1%)
+CASES.append(('AsV_competition', base(pco2_si=-2.0, solution={
+    'Na': 0.01, 'Cl': 0.011, 'Ca': 1e-3, 'As(5)': 1e-6, 'P': 2e-5, 'Si': 5e-4}),
+    {'metals': ['As(5)', 'P']}))
 CASES.append(('edge_Ni_W0.5', base(W=0.5, solution={'Na': 0.01, 'Cl': 0.011, 'Ni': 1e-6}),
               {'metals': ['Ni']}))
 soil = {'Na': 1e-3, 'K': 2e-4, 'Ca': 2e-3, 'Mg': 5e-4, 'Cl': 4e-3, 'S(6)': 5e-4,
