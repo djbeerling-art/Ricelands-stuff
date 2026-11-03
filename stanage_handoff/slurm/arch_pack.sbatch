@@ -67,6 +67,10 @@ export -f sync_out attempt
 run_one() {
     IFS='|' read a args <<< "$1"
     local ST=$STATUS_DIR/$a.txt rc
+    # finished archetype (every dose chain at its last year): skip before any copy to local disk (a resubmit would
+    # otherwise copy ~2.5 GB per finished archetype to the node and back, saturating scratch)
+    local done=1; for d in $DOSES; do grep -q "^g22_${a}_${d}_y${YEARS}f rc 0" "$ST" 2>/dev/null || done=0; done
+    [ $done = 1 ] && { echo "$a done already"; return 0; }
     for f in ${ARCH_NUDGE:-1 0.95 1.05 0.9 1.1}; do
         if [ -s "${ST%.txt}.args" ] && ! grep -q "irralk x$f)" "$ST" 2>/dev/null; then continue; fi   # resume: skip used factors
         attempt $a "$args" $f $ST
