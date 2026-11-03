@@ -83,8 +83,11 @@ Next steps:
    so carry Co(2)/Mn(2) as decoupled valences. Equilibrium HMO reproduces the Sabah-like Co and
    Mn falls but only part of the Ni fall, and every oxide model over-predicts the Cu fall:
    next pieces are SOM binding (Cu, Pb) and a slow Ni ageing/incorporation pool on Mn oxide.
-2. Release from host minerals for Ni and Cu, driven by SCEPTER's per-mineral dissolution rates
-   (read from the amend() run output), then Vermont end to end.
+2. Offline coupling done (te/chem/scepter_te.py): reads a SCEPTER run, releases metals from
+   dissolving host minerals, advects and re-partitions them; mass balance closes. First Vermont
+   run (study in project files) gives labile Ni 0.9x, Zn 0.8x, Cd 1.0x after 3 yr, with Cu and Pb
+   falling too far (no SOM binding yet), and pH rising ~0.4 vs the observed 0.15-0.24.
+   SCEPTER control runs with dose 0 stall in the PSD solver: use the spin-up state instead.
 3. Per-soil Hfo site densities from Fe-oxide content: ~0.6 mol Fe/kgw if 1.5% Fe oxide were all ferrihydrite at
    field moisture, far above the 1 mmol used in the tests, so sorption will dominate over
    exchange in most soils.
