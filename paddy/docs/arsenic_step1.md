@@ -188,15 +188,15 @@ Residual = log10(observed grain ratio) - log10(competitive uptake ratio, Ki 300 
 
 ## 27-soil basalt sweep: first results (Stanage job 12049941, 3 Nov 2026)
 
-Year 3, 20 t/ha basalt, 24 of 27 soils (soil 17 rerunning; soils 11 and 20 incomplete, resubmitted). Data:
+Year 3, 20 t/ha basalt, all 27 soils (soils 11, 17 and 20 rerun after intermittent failures). Data:
 `/mnt/project-files/arsenic-plan/sweep/as_sweep_summary_20261103.csv`; figures from `as_sweep_figures.py`.
 
-- All 24 soils: uptake suppressed. Competitive As(III) uptake ratio (Ki 300 uM) 0.14-0.48; the simulated as3up
-  ratio agrees (0.14-0.49). Basalt raised Si about 12.5x (T 5.8-6.0) and pH by 0.7-1.4; As(III) rose 0.95-3.2x.
+- All 27 soils: uptake suppressed. Competitive As(III) uptake ratio (Ki 300 uM) 0.14-0.51 (Ki 600: at most 0.74); the
+  simulated as3up ratio agrees (0.14-0.51). Basalt raised Si about 12.5x (T 5.8-6.0) and pH by 0.7-1.4; As(III) rose 0.95-3.4x.
 - Ferrihydrite share f orders As(III) mobilisation (Spearman 0.98). The pre-registered correction A (0.84 x rule)
-  predicts R_As with log RMSE 0.028 (bias +0.01) against 0.089 for the uncorrected rule; B (0.72x) over-corrects
+  predicts R_As with log RMSE 0.026 (bias +0.01) against 0.088 for the uncorrected rule; B (0.72x) over-corrects
   (RMSE 0.063). R_inv 0.80-0.88.
-- Least suppression at high ferrihydrite, low goethite (3% / 0.5%: 0.38-0.48). Irrigation alkalinity has a small
+- Least suppression at high ferrihydrite, low goethite (3% / 0.5%: 0.38-0.51). Irrigation alkalinity has a small
   effect (alkaline water slightly less suppression, e.g. 0.33 -> 0.44 at 1.2% / 0.5%).
 - To raise uptake, R_As would need to exceed T (about 5.9). Even the uncorrected rule gives at most 0.60 x T in this
   grid, so no soil here is near the boundary.
