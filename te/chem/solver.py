@@ -114,8 +114,8 @@ class Speciator:
         nb = len(s.basis)
         cec = cec or {}
         surfaces = surfaces or {}
-        lab2sp = dict(s.aliases)
-        lab2sp.update({v: k for k, v in s.comp_elem.items()})
+        lab2sp = {v: k for k, v in s.comp_elem.items()}
+        lab2sp.update(s.aliases)
         T_k = np.zeros(nb)
         present = np.zeros(nb, bool)
         for lab, v in list(totals.items()) + list(cec.items()):

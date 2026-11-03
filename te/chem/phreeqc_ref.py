@@ -20,11 +20,22 @@ def _ip():
     return ip
 
 
+def _surf_lines(case):
+    out = []
+    if case.get('hfo'):
+        h = case['hfo']
+        out += [f"  Hfo_wOH {h['weak']} {h['area']} {h['mass']}", f"  Hfo_sOH {h['strong']}"]
+    if case.get('hmo'):
+        h = case['hmo']
+        out += [f"  Hmo_xOH {h['x']} {h['area']} {h['mass']}", f"  Hmo_yOH {h['y']}"]
+    return out
+
+
 def run(case, species):
     """case: dict with T (C), W (kg), solution {label: mol/kgw}, pH list,
     pe (or None; fixed with Fix_pe), o2_si (or None; pe from O2(g) instead),
     pco2_si (or None), cec (mol), hfo (dict weak, strong, mass,
-    area) or None, minerals list, elements list (for SYS output).
+    area) or None, hmo (dict x, y, mass, area) or None, minerals list, elements list (for SYS output).
     species: aqueous + exchange + surface species names to punch.
     Returns a list of dict rows, one per pH."""
     extra = open(EXTRA).read()
@@ -66,10 +77,8 @@ def run(case, species):
             b.append(f'  {m} 0 0')
         if case.get('cec'):
             b += ['EXCHANGE 1', f"  X {case['cec']}", '  -equilibrate 1']
-        if case.get('hfo'):
-            h = case['hfo']
-            b += ['SURFACE 1', f"  Hfo_wOH {h['weak']} {h['area']} {h['mass']}",
-                  f"  Hfo_sOH {h['strong']}", '  -equilibrate 1']
+        if case.get('hfo') or case.get('hmo'):
+            b += ['SURFACE 1'] + _surf_lines(case) + ['  -equilibrate 1']
         b += ['USER_PUNCH', '-headings ' + head] + punch + \
              ['SELECTED_OUTPUT', '-reset false', 'END']
         ip = _ip()
@@ -101,10 +110,8 @@ def run_transport(spec):
     L += sol(0, spec['inflow'])
     L += sol(f'1-{n}', spec['soil'])
     L += [f'EXCHANGE 1-{n}', f"  X {spec['cec']}", '  -equilibrate 1']
-    if spec.get('hfo'):
-        h = spec['hfo']
-        L += [f'SURFACE 1-{n}', f"  Hfo_wOH {h['weak']} {h['area']} {h['mass']}",
-              f"  Hfo_sOH {h['strong']}", '  -equilibrate 1']
+    if spec.get('hfo') or spec.get('hmo'):
+        L += [f'SURFACE 1-{n}'] + _surf_lines(spec) + ['  -equilibrate 1']
     if spec.get('phases'):
         L.append(f'EQUILIBRIUM_PHASES 1-{n}')
         L += [f'  {p} {si} {amt}' for p, si, amt in spec['phases']]
@@ -124,7 +131,7 @@ def run_transport(spec):
           ['SELECTED_OUTPUT', '-reset false', '-high_precision true']
     # batch re-equilibration of cell 1 gives the initial state (all cells equal)
     L += sel + ['USE solution 1', 'USE exchange 1']
-    if spec.get('hfo'):
+    if spec.get('hfo') or spec.get('hmo'):
         L.append('USE surface 1')
     if spec.get('phases'):
         L.append('USE equilibrium_phases 1')

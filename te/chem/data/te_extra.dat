@@ -40,7 +40,75 @@ Cd+2 + 2 X- = CdX2
 	log_k 0.8
 Pb+2 + 2 X- = PbX2
 	log_k 1.05
+# Co: no Appelo & Postma value; assumed equal to Ni.
+Co+2 + 2 X- = CoX2
+	log_k 0.62
+SURFACE_MASTER_SPECIES
+# Hydrous Mn oxide (HMO) DLM: Tonkin, Balistrieri & Murray (2004) Appl. Geochem. 19:29-53.
+# 2.1 mmol sites/g, 746 m2/g, X fraction 0.64 (Hmo_x 1.34, Hmo_y 0.76 mmol/g).
+Hmo_x Hmo_xOH
+Hmo_y Hmo_yOH
 SURFACE_SPECIES
+Hmo_xOH = Hmo_xOH
+	log_k 0
+Hmo_yOH = Hmo_yOH
+	log_k 0
+Hmo_xOH = Hmo_xO- + H+
+	log_k -2.35
+Hmo_yOH = Hmo_yO- + H+
+	log_k -6.06
+Hmo_xOH + Ba+2 = Hmo_xOBa+ + H+
+	log_k 0.45
+Hmo_xOH + Ca+2 = Hmo_xOCa+ + H+
+	log_k -1.5
+Hmo_xOH + Cd+2 = Hmo_xOCd+ + H+
+	log_k -2.4
+Hmo_xOH + Cd+2 + H2O = Hmo_xOCdOH + 2 H+
+	log_k -8.0
+Hmo_yOH + Cd+2 = Hmo_yOCd+ + H+
+	log_k -3.5
+Hmo_yOH + Cd+2 + H2O = Hmo_yOCdOH + 2 H+
+	log_k -8.5
+Hmo_xOH + Co+2 = Hmo_xOCo+ + H+
+	log_k 1.0
+Hmo_xOH + Co+2 + H2O = Hmo_xOCoOH + 2 H+
+	log_k -3.9
+Hmo_xOH + Cu+2 = Hmo_xOCu+ + H+
+	log_k 0.85
+Hmo_xOH + Cu+2 + H2O = Hmo_xOCuOH + 2 H+
+	log_k -2.8
+Hmo_yOH + Cu+2 = Hmo_yOCu+ + H+
+	log_k 0.86
+Hmo_yOH + Cu+2 + H2O = Hmo_yOCuOH + 2 H+
+	log_k -5.7
+Hmo_xOH + Mg+2 = Hmo_xOMg+ + H+
+	log_k -2.4
+Hmo_xOH + Mg+2 + H2O = Hmo_xOMgOH + 2 H+
+	log_k -7.7
+Hmo_xOH + Mn+2 = Hmo_xOMn+ + H+
+	log_k 1.2
+Hmo_xOH + Mn+2 + H2O = Hmo_xOMnOH + 2 H+
+	log_k -2.7
+Hmo_xOH + Ni+2 = Hmo_xONi+ + H+
+	log_k -0.48
+Hmo_xOH + Ni+2 + H2O = Hmo_xONiOH + 2 H+
+	log_k -5.0
+Hmo_xOH + Pb+2 + H2O = Hmo_xOPbOH + 2 H+
+	log_k -0.86
+Hmo_yOH + Pb+2 = Hmo_yOPb+ + H+
+	log_k 3.4
+Hmo_yOH + Pb+2 + H2O = Hmo_yOPbOH + 2 H+
+	log_k -1.6
+Hmo_xOH + Sr+2 = Hmo_xOSr+ + H+
+	log_k -1.6
+Hmo_xOH + Sr+2 + H2O = Hmo_xOSrOH + 2 H+
+	log_k -6.6
+Hmo_xOH + Zn+2 = Hmo_xOZn+ + H+
+	log_k -0.01
+Hmo_xOH + Zn+2 + H2O = Hmo_xOZnOH + 2 H+
+	log_k -4.4
+Hmo_yOH + Zn+2 + H2O = Hmo_yOZnOH + 2 H+
+	log_k -7.6
 # Anions competing with arsenate on Hfo, not in minteq.v4.
 # Carbonate: Van Geen et al. (1994) re-optimised for D&M (phreeqc.dat).
 Hfo_wOH + CO3-2 + H+ = Hfo_wCO3- + H2O

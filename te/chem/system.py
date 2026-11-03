@@ -279,6 +279,11 @@ def build(db, elements, redox='decoupled', valences=None, exchangers=(),
         ph[p] = (row, terms)
     aliases = {lab: sp for lab, sp in db.masters.items()
                if sp in basis and _base_elem(lab) in elements}
+    # an element whose primary valence is not carried (e.g. minteq's Co+3 when
+    # only Co(2) is kept) is labelled by its first carried valence
+    for p, el in prim.items():
+        if not keep_prim_state[p] and valences.get(el):
+            aliases[el] = db.masters[valences[el][0]]
     return System(basis, comp_elem, aq, ex, surf, ph, aliases)
 
 

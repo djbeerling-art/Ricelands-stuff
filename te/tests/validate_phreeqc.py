@@ -21,6 +21,9 @@ PH = [4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
 METALS = ['Ni', 'Cu', 'Zn', 'Cd', 'Pb']
 HFO = dict(weak=2e-4, strong=5e-6, mass=0.089, area=600)   # 1 mmol Fe, D&M 1990
 
+# HMO: Tonkin et al. (2004); 0.1 g (2.1 mmol sites/g, 64% X sites)
+HMO = dict(x=0.1 * 2.1e-3 * 0.64, y=0.1 * 2.1e-3 * 0.36, mass=0.1, area=746)
+
 db = thermo.read([pr.DB, pr.EXTRA])
 
 
@@ -46,6 +49,10 @@ CASES.append(('edge_AsV', base(solution={'Na': 0.01, 'Cl': 0.011, 'As(5)': 1e-6}
               {'metals': ['As(5)'], 'free': 'H2AsO4-'}))
 CASES.append(('edge_AsIII', base(pe=0, solution={'Na': 0.01, 'Cl': 0.011, 'As(3)': 1e-6}),
               {'metals': ['As'], 'redox': 'coupled', 'free': 'H3AsO3'}))
+# Mn oxide (HMO) edges for the cations it binds, alone and with Hfo
+for m in ['Ni', 'Co', 'Cu', 'Zn', 'Cd', 'Pb']:
+    CASES.append(('hmo_' + m, base(hfo=None, hmo=HMO, solution={'Na': 0.01, 'Cl': 0.011, m: 1e-6}),
+                  {'metals': [m]}))
 # As(V) with competing phosphate, silicate (basalt) and bicarbonate (pCO2 1%)
 CASES.append(('AsV_competition', base(pco2_si=-2.0, solution={
     'Na': 0.01, 'Cl': 0.011, 'Ca': 1e-3, 'As(5)': 1e-6, 'P': 2e-5, 'Si': 5e-4}),
@@ -58,6 +65,9 @@ CASES.append(('soil_25C', base(pco2_si=-2.0, cec=0.05, solution=soil),
               {'metals': METALS}))
 CASES.append(('soil_10C', base(T=10, pco2_si=-2.0, cec=0.05, solution=soil),
               {'metals': METALS}))
+CASES.append(('soil_hfo_hmo', base(pco2_si=-2.0, cec=0.05, hmo=HMO,
+                                   solution=dict(soil, Co=1e-7, Mn=1e-5)),
+              {'metals': METALS + ['Co', 'Mn']}))
 # acid soil: Al on the exchanger, gibbsite cap (Sabah, Vermont)
 acid = {'Na': 2e-4, 'K': 1e-4, 'Ca': 5e-4, 'Mg': 1.25e-4, 'Cl': 2e-3, 'Al': 2e-4,
         'Ni': 1e-6, 'Cu': 1e-6}
@@ -80,12 +90,14 @@ def run_case(name, case, opt):
         if m == 'Cu':
             val['Cu'] = ['Cu(2)']
     if opt.get('redox', 'decoupled') == 'decoupled':
+        val.update({'Co': ['Co(2)'], 'Mn': ['Mn(2)']})
         for l in labels:
             if '(' in l and thermo_base(l) not in val:
                 val[thermo_base(l)] = [l]
     sy = system.build(db, els, redox=opt.get('redox', 'decoupled'), valences=val,
                       exchangers=['X'] if case['cec'] else [],
-                      surfaces=['Hfo_w', 'Hfo_s'] if case['hfo'] else [],
+                      surfaces=(['Hfo_w', 'Hfo_s'] if case['hfo'] else [])
+                      + (['Hmo_x', 'Hmo_y'] if case.get('hmo') else []),
                       phases=case['minerals'] + (['CO2(g)'] if case['pco2_si'] is not None else []))
     species = sy.aq.names + sy.ex.names + sy.surf.names
     rows = pr.run(dict(case, elements=els), species)
@@ -100,6 +112,10 @@ def run_case(name, case, opt):
             h = case['hfo']
             kw['surfaces'] = {'Hfo': solver.Surface({'Hfo_w': h['weak'], 'Hfo_s': h['strong']},
                                                     h['area'], h['mass'])}
+        if case.get('hmo'):
+            h = case['hmo']
+            kw.setdefault('surfaces', {})['Hmo'] = solver.Surface(
+                {'Hmo_x': h['x'], 'Hmo_y': h['y']}, h['area'], h['mass'])
         if case['cec']:
             kw['cec'] = {'X': case['cec']}
         if case['pco2_si'] is not None:
