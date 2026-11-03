@@ -89,6 +89,12 @@ def main(pert_f, prefix):
         out[f'dT_{c}_mK'] = np.median(x, axis=1)*1e3
         if x.shape[1] > 1:
             out[f'dT_{c}_p05_mK'] = np.percentile(x, 5, axis=1)*1e3; out[f'dT_{c}_p95_mK'] = np.percentile(x, 95, axis=1)*1e3
+        # atmospheric concentration changes (global mean): CH4 ppb, N2O ppb, CO2 ppm
+        for sp, u in (('CH4', 'ppb'), ('N2O', 'ppb'), ('CO2', 'ppm')):
+            y_ = dC.sel(scenario=c, specie=sp).values
+            out[f'd{sp}_{c}_{u}'] = np.median(y_, axis=1)
+            if y_.shape[1] > 1:
+                out[f'd{sp}_{c}_p05_{u}'] = np.percentile(y_, 5, axis=1); out[f'd{sp}_{c}_p95_{u}'] = np.percentile(y_, 95, axis=1)
     df = pd.DataFrame(out)
     df.to_csv(f'{prefix}_dT.csv', index=False, float_format='%.4g')
     import xarray as xr
@@ -98,7 +104,7 @@ def main(pert_f, prefix):
     for y in [yr0 + 10, yr0 + 20, yr0 + 50, yr0 + 100]:
         if y in df.year.values:
             r = df[df.year == y].iloc[0]
-            print(f'{y}: ' + ', '.join(f'{c} {r[f"dT_{c}_mK"]:+.2f} mK' for c in COMP))
+            print(f'{y}: ' + ', '.join(f'{c} {r[f"dT_{c}_mK"]:+.2f} mK' for c in COMP) + f'; CH4 {r["dCH4_all_ppb"]:+.1f} ppb, CO2 {r["dCO2_all_ppm"]:+.3f} ppm')
     print(f'-> {prefix}_dT.csv, {prefix}_detail.nc, {prefix}.png ({len(configs)} configs, background {ssp})')
 
 def plot(df, p, prefix, ssp):
