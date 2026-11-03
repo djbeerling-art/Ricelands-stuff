@@ -121,6 +121,10 @@ class TEResult:
     released: list = field(default_factory=list)  # cumulative mol/m2 per metal
     leached: list = field(default_factory=list)   # cumulative mol/m2 per metal
     metals: list = field(default_factory=list)
+    host: list = field(default_factory=list)      # per snapshot: per-cell host totals (mol/m3)
+    surfaces: object = None                       # cell -> {name: Surface}
+    cec_x: object = None                          # snap -> exchanger charge per cell
+    labels: dict = field(default_factory=dict)    # metal -> solver label
 
     def mgkg(self, pool, k, snap):
         """Pool at output k in mg per kg soil, (cell, metal)."""
@@ -266,4 +270,8 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         res.pools['total'].append(tot.copy())
         res.released.append(cum_rel.copy())
         res.leached.append(cum_lea.copy())
+        res.host.append(hostt)
+    res.surfaces = surfaces
+    res.cec_x = cec_x
+    res.labels = lab
     return res
