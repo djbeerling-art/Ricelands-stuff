@@ -31,7 +31,7 @@ def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
                           poro_iter='false', sldmin_lim='true', display=1,
                           report=0, restart=restart, rough=os.environ.get('TE_ROUGH', 'true'),
                           act_ON='false', dt_fix='false', cec_on='true',
-                          dz_fix='true', close_aq='false', poro_evol='true',
+                          dz_fix='true', close_aq='false', poro_evol=os.environ.get('TE_POROEVOL', 'true'),
                           sa_evol_1='true', sa_evol_2='false',
                           psd_bulk='true' if psd else 'false',
                           psd_full='true' if psd else 'false', season='false')

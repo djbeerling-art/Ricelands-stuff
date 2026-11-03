@@ -140,7 +140,7 @@ def _dens(snap):
 def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         fe_reactive=0.1, hmo_g_per_kg=0.0, hum_g_per_kg=0.0, extra_totals=None, minerals=(),
         valence_labels=None, courant=0.9, T=None, max_sub=None, cec_mode='total',
-        slow=None):
+        slow=None, implicit_sub=None):
     """Run trace metals through SCEPTER snapshots.
 
     sv        : solver.Speciator built with the majors, metals, X, Hfo_w/Hfo_s,
@@ -153,6 +153,11 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
     hum_g_per_kg : active humic acid (simplified WHAM VII, chem.humic) per kg
                 soil; scalar or one value per cell (e.g. 0.5 x SOM)
     valence_labels: {metal: label passed to the solver}, e.g. {'As': 'As(5)'}
+    implicit_sub: if set, transport uses implicit upwind advection of the
+                retarded metal (dissolved fraction lagged from the start of each
+                sub-step; trace metals are in the linear regime) with this many
+                sub-steps per snapshot interval, instead of the explicit Courant-
+                limited scheme. For century-scale runs.
     slow      : optional slow (aged / strongly held) pool exchanging with the
                 surface-sorbed metal, dS/dt = k_age*sorbed - k_rel*S, e.g.
                 {'total': {metal: mol/m3 slow pool at t0}, 'k_age': 1.0}. k_rel is set
@@ -251,7 +256,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
             continue
         # water Courant limit on the explicit advection
         dt_c = courant * np.min(snap.W / 1000.0 * snap.dz / np.maximum(snap.q, 1e-12))
-        nsub = max(1, int(np.ceil(dt_tot / dt_c)))
+        nsub = max(1, int(np.ceil(dt_tot / dt_c))) if not implicit_sub else implicit_sub
         if max_sub:
             nsub = min(nsub, max_sub)
         dt = dt_tot / nsub
@@ -282,6 +287,18 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
                 rel = S * (1 - np.exp(-k_rel * dt))
                 S += age - rel
                 tot += rel - age
+            if implicit_sub:
+                # backward-Euler upwind on the total, c = fd * T / W (fd lagged)
+                fd = part['dissolved'] / np.maximum(tot, 1e-300)
+                a = snap.q[:, None] * 1000.0 * fd / snap.W[:, None] * dt / snap.dz[:, None]
+                newt = np.zeros_like(tot)
+                for i in range(nz):
+                    up = a[i - 1] * newt[i - 1] * snap.dz[i - 1] / snap.dz[i] if i > 0 else 0.0
+                    newt[i] = (tot[i] + up) / (1.0 + a[i])
+                out_flux = a[-1] * newt[-1] * snap.dz[-1] / dt
+                cum_lea += out_flux * dt
+                tot[:] = newt
+                continue
             tot += (inflow - flux) * dt / snap.dz[:, None]
             cum_lea += flux[-1] * dt
         part = equilibrate(snap, hostt)
