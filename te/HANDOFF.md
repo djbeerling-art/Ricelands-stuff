@@ -47,6 +47,14 @@ Chemistry prototype (te/chem, see te/chem/README.md):
   Don't fix a high pe with Fix_pe/O2(g) (PHREEQC fails); use O2(g) SI instead.
   Cu needs Cu(2) as its decoupled valence.
 
+Field Ni check (te/studies/ni_batch_field.py, output alongside), closed batch, equilibrium only:
+- Corn Belt (T2): pH +0.2-0.4 with higher Ca gives NH4OAc-like Ni 0.5-0.7x control at 10-30%
+  reactive Fe; observed ~0.55x (Fig S18). Equilibrium sorption onto Fe oxide explains it.
+- Sabah (P2): observed 0.23x (2018->2024, pH 5.5->5.74). Closed batch gives only 0.7-0.95x, but
+  higher Ca triples porewater Ni (~100 -> 300 ug/L). At ~1 m/yr drainage that leaches ~3 kg Ni/ha/yr,
+  about the whole 0-10 cm exchangeable pool, so Ca displacement + leaching is the likely mechanism.
+  Testing this needs the transport column (next step 1). Al exchange and SOM binding are not in yet.
+
 Next steps:
 1. Phase 1 transport: a 1-D column (advection + tillage mixing) calling the solver per cell,
    checked against PHREEQC TRANSPORT with exchange + Hfo (as for ex11).
