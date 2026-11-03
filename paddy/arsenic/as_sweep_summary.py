@@ -63,13 +63,18 @@ def sites(run):
     except OSError: v = []
     return (v[0] if v else 1.0), (v[1] if len(v) > 1 else 0.02)
 
+def kd3(run):
+    """As(III) sorption constants of the run: ./as_kd.in (written by --askd, e.g. a high-phosphate refit) or built-in"""
+    try: return tuple(float(x) for x in open(os.path.join(run, 'as_kd.in')).read().splitlines()[1].split()[:6])
+    except (OSError, IndexError, ValueError): return A3
+
 def series(run):
     """time-resolved As(III), Si (M), pH and As(III) Kd on ferrihydrite and goethite sites over the root zone; Kd and
     inventory are NaN where the solid profiles were pruned (earlier chain years keep porewater only, KEEPPH)"""
     aq, sl, bs = profs(run, 'prof_aq'), profs(run, 'prof_sld'), profs(run, 'bsd')
     if len(aq) < 3: return None
     full = len(sl) == len(aq) == len(bs)
-    fs, fg = sites(run); a, b, c, aS, bS, n = A3
+    fs, fg = sites(run); a, b, c, aS, bS, n = kd3(run)
     z = aq[0][1][:, 0]; w = np.exp(-z/ZR)*(z <= ZROOT); w = w/w.sum()
     o = {k: [] for k in ('t', 'as3', 'si', 'ph', 'kfh', 'kgt', 'dsi', 'inv3')}
     for i, (h, x) in enumerate(aq):

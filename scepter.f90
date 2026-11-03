@@ -10483,6 +10483,36 @@ if (.not. read_done) then
 endif 
 fs = fs_save
 endfunction as_fsite_f
+function as_kd_f(isp,k) result(v)
+! Sorption constants of as3sp (isp 1) and as5sp (isp 2): a, b, c, aS, bS, n (k 1-6). Defaults are the fit to the DLM
+! grid at 0.01 mM phosphate (paddy/arsenic/kd_constants.json); ./as_kd.in (a header line, then six values for As(III)
+! and six for As(V), one line each) replaces them, e.g. a refit at higher background phosphate. Read once.
+implicit none
+integer,intent(in)::isp,k
+real(kind=8)::v
+real(kind=8),save::c(2,6) = reshape((/5.1882d0,7.2189d0,-0.0224d0,-1.0735d0,-0.0171d0,-0.2022d0, &
+    & 3.8028d0,9.3859d0,0.0104d0,0.1815d0,0.8685d0,1.9115d0/),(/2,6/))
+logical,save::read_done = .false.
+logical::exist_file
+integer::ios1,ios2
+real(kind=8)::t3(6),t5(6)
+if (.not. read_done) then 
+    read_done = .true.
+    inquire(file='./as_kd.in',exist=exist_file)
+    if (exist_file) then 
+        open(981,file='./as_kd.in',status='old',action='read')
+        read(981,'()')
+        read(981,*,iostat=ios1) t3
+        read(981,*,iostat=ios2) t5
+        close(981)
+        if (ios1 == 0 .and. ios2 == 0) then 
+            c(1,:) = t3; c(2,:) = t5
+            print *,'As sorption constants from as_kd.in: ',c(1,:),c(2,:)
+        endif 
+    endif 
+endif 
+v = c(isp,k)
+endfunction as_kd_f
 function as_fgt_f() result(fg)
 ! As sorption sites per mol goethite Fe (Si-insensitive pool of as3sp/as5sp): 0.02 (~2.3 sites/nm2 at ~50 m2/g,
 ! Dixit and Hering 2003), or the second value on the data line of ./as_sites.in, read once.
@@ -23631,12 +23661,16 @@ select case(trim(adjustl(rxn_name)))
         ! the fitted range. Rate = krxn1 * (sorbed(eq) - sorbed), so sorbed As follows amfe3 as it is reductively dissolved.
         ! Si sorption itself is not taken out of solution (Si is set by the porewater balance). The weak-site density can be
         ! scaled by the factor in ./as_sites.in (default 1: fresh ferrihydrite, 600 m2/g), for aged or organically coated oxide.
+        ! The six constants per species can be replaced by ./as_kd.in (a header line, then a, b, c, aS, bS, n for As(III)
+        ! on one line and for As(V) on the next), e.g. a refit at a higher fixed background phosphate (as_kd_f).
         if (trim(adjustl(rxn_name))=='as3sp') then 
-            as_a = 5.1882d0; as_b = -0.0224d0; as_c = -0.0171d0; as_as = 3.8028d0; as_bs = 0.0104d0; as_n = 0.8685d0
+            as_a = as_kd_f(1,1); as_b = as_kd_f(1,2); as_c = as_kd_f(1,3)
+            as_as = as_kd_f(1,4); as_bs = as_kd_f(1,5); as_n = as_kd_f(1,6)
             asx   = max(maqx_loc(findloc(chraq_all,'as3',dim=1),:),0d0)
             asadx = msldx_loc(findloc(chrsld_all,'as3ad',dim=1),:)
         else 
-            as_a = 7.2189d0; as_b = -1.0735d0; as_c = -0.2022d0; as_as = 9.3859d0; as_bs = 0.1815d0; as_n = 1.9115d0
+            as_a = as_kd_f(2,1); as_b = as_kd_f(2,2); as_c = as_kd_f(2,3)
+            as_as = as_kd_f(2,4); as_bs = as_kd_f(2,5); as_n = as_kd_f(2,6)
             asx   = max(maqx_loc(findloc(chraq_all,'as5',dim=1),:),0d0)
             asadx = msldx_loc(findloc(chrsld_all,'as5ad',dim=1),:)
         endif 

@@ -6,9 +6,11 @@ with Si competition, fitted separately for As(III) and As(V) to the PHREEQC DLM 
   log KSi_i = aS_i + bS_i (pH-7)
 As is trace relative to sites (<5% loading in the grid), so As(III) and As(V) do not compete with each other.
 Mass balance for one species: c_i = T_i / (1 + S K_i / (1 + KSi_i cSi^n_i))."""
-import csv, json, numpy as np
+import csv, json, sys, numpy as np
 from scipy.optimize import least_squares
-rows = list(csv.DictReader(open('grid_phreeqc.csv')))
+GRID = sys.argv[1] if len(sys.argv) > 1 else 'grid_phreeqc.csv'
+OUTJ = sys.argv[2] if len(sys.argv) > 2 else 'kd_constants.json'
+rows = list(csv.DictReader(open(GRID)))
 D = {k: np.array([float(r[k]) for r in rows]) for k in rows[0]}
 d = D['pH'] - 7; si = D['si_mM']*1e-3; S = 0.2*D['fe_mol']
 T = {'as3': D['as_mM']*1e-3*(1-D['as5_frac']), 'as5': D['as_mM']*1e-3*D['as5_frac']}
@@ -27,7 +29,7 @@ for sp, p0 in (('as3', [3, 0, 0, 4, 0, 0.8]), ('as5', [6, -0.5, 0, 4, 0, 0.8])):
     out[sp]['rmse_log10'] = round(float(np.sqrt(np.mean(r**2))), 3)
     out[sp]['max_abs_log10'] = round(float(abs(r).max()), 3)
     print(sp, out[sp])
-json.dump(out, open('kd_constants.json', 'w'), indent=1)
+json.dump(out, open(OUTJ, 'w'), indent=1)
 
 # behaviour checks against the prototype scans (base case: Fe 0.233, As 0.208 mM, 5% As(V))
 def c_of(sp, pH, si_mM, fe=0.233):

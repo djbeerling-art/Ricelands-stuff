@@ -106,6 +106,8 @@
 #   List as3up with siup in the reactions for Si-competitive As(III) uptake by rice (placeholder constants).
 # --asx=<mol/m3> Si-insensitive As sorption sites (crystalline Fe oxides, clays, OM; soil-specific, default 0), written to
 #   krxn_ext.in as krxn2 of as3sp and as5sp.
+# --askd=<json> As(III)/As(V) sorption constants from paddy/arsenic/fit_kd.py output (default: built-in fit at
+#   0.01 mM phosphate; kd_constants_Pr0.02.json / _Pr0.1.json = labile P 0.02 / 0.1 mol per mol ferrihydrite Fe).
 # --assite=<f>[:<fgt>] fraction of ferrihydrite weak sites available to As (default 1 = fresh ferrihydrite) and As sites
 #   per mol goethite Fe, the Si-insensitive crystalline pool (default 0.02) (as_sites.in). Goethite comes from --gt.
 # Output goes to $SCEPTER_OUT (default ./scepter_output/) under paddy/flood_<tag>.
@@ -198,6 +200,13 @@ if 'k' in opt: shutil.copy(opt['k'],os.path.join(rundir,'krxn_ext.in'))
 if os.path.exists(os.path.join(rundir,'as_sites.in')): os.remove(os.path.join(rundir,'as_sites.in'))
 if 'assite' in opt:
     with open(os.path.join(rundir,'as_sites.in'),'w') as f: f.write('fraction of ferrihydrite sites available to As, As sites per mol goethite Fe\n%s\n' % opt['assite'].replace(':',' '))
+if os.path.exists(os.path.join(rundir,'as_kd.in')): os.remove(os.path.join(rundir,'as_kd.in'))
+if 'askd' in opt:   # As sorption constants from a fit_kd.py json (e.g. paddy/arsenic/kd_constants_Pr0.1.json, high phosphate)
+    import json as _json
+    _kd = _json.load(open(opt['askd']))
+    with open(os.path.join(rundir,'as_kd.in'),'w') as f:
+        f.write('As sorption constants a b c aS bS n: As(III) line, As(V) line (%s)\n' % opt['askd'])
+        for _sp in ('as3','as5'): f.write(' '.join('%.6g' % _kd[_sp][k] for k in ('a','b','c','aS','bS','n')) + '\n')
 if 'asx' in opt:
     _kf = os.path.join(rundir,'krxn_ext.in')
     _new = not os.path.exists(_kf)
