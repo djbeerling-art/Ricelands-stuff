@@ -13,7 +13,7 @@ results (same rock, soil, dose and years).
    Leaching fractions per year (Tyler 1978, pH 4.2, 1000 mm): Ni 0.166,
    Cu 0.049, Cr 0.026, Zn 0.098. Other metals are not given by Dupla
    (default 0, i.e. conservative); crop export as mg/kg soil per year (Table 1).
-2. ERW-MAC (Olagaray et al., ERW Metal Accumulation Calculator, preprint),
+2. ERW-MAC (Olagaray et al., CDRXiv preprint https://cdrxiv.org/preprint/546),
    Eq. 1: all TE in the applied rock is released instantly and stays in the
    mixing layer (no leaching, no crop export, homogeneous mixing). ERW-MAC
    samples soil depth U(0.05, 0.3) m and bulk density N(1250, 250) truncated
