@@ -342,6 +342,7 @@ class Speciator:
                      psi={g: y[i] * R * T / F for i, g in enumerate(gnames)},
                      lg=lg, iterations=it_total)
         hum_rows = np.array([n.startswith('Hum_') for n in s.surf.names], dtype=bool)   # humic (organic) surface species
+        dom_rows = np.array([n.startswith('Dom_') for n in s.surf.names], dtype=bool)   # dissolved organic matter
         for k in range(nb):
             if not present[k] or fixed[k]:
                 continue
@@ -351,6 +352,7 @@ class Speciator:
                 'exchange': float(s.ex.nu[:, k] @ n_ex),
                 'sorbed': float(s.surf.nu[:, k] @ n_sf),
                 'sorbed_hum': float(s.surf.nu[hum_rows, k] @ n_sf[hum_rows]) if hum_rows.any() else 0.0,
+                'dom': float(s.surf.nu[dom_rows, k] @ n_sf[dom_rows]) if dom_rows.any() else 0.0,
                 'mineral': float(sum(ph_si[p][0][k] * nm[p] for p in active)),
                 'free': float(10 ** la[k] * W / 10 ** lg.get(s.basis[k], 0.0))
                 if s.basis[k] in lg else float('nan'),

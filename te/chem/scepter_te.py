@@ -140,7 +140,7 @@ def _dens(snap):
 def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         fe_reactive=0.1, hmo_g_per_kg=0.0, hum_g_per_kg=0.0, extra_totals=None, minerals=(),
         valence_labels=None, courant=0.9, T=None, max_sub=None, cec_mode='total',
-        slow=None, implicit_sub=None):
+        slow=None, implicit_sub=None, dom=None):
     """Run trace metals through SCEPTER snapshots.
 
     sv        : solver.Speciator built with the majors, metals, X, Hfo_w/Hfo_s,
@@ -165,6 +165,11 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
                 per cell and metal at t0 so that the initial state is steady
                 (release from S balances ageing plus net leaching from the cell),
                 i.e. the control keeps its labile metal under the initial forcing.
+    dom       : optional dissolved organic matter, {'doc_ref': mg C/L, 'pH_ref': pH,
+                'slope': d log10(DOC)/d pH}. A mobile copy of the humic surface
+                (humic.add_dom must have been applied to the database and the Dom_*
+                masters given to the speciator) sized from DOC(pH) in each cell's
+                porewater. Metal bound to it ('dom' pool) is carried with the water.
     cec_mode  : 'total' offers SCEPTER's whole CEC to the TE exchanger (sites
                 SCEPTER leaves H-occupied become HX); 'eff' offers only the
                 charge SCEPTER holds as exchangeable base cations and Al.
@@ -182,7 +187,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         for j, m in enumerate(metals):
             tot[:, j] = background.get(m, 0.0)
     res = TEResult(z=s0.z, metals=list(metals),
-                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'mineral', 'total', 'slow')})
+                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'dom', 'mineral', 'total', 'slow')})
     S = np.zeros((nz, len(metals))); k_rel = None
     if slow:
         for j, m in enumerate(metals):
@@ -196,8 +201,11 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
     t_prev = 0.0
     diss = None
 
-    def surfaces(i):
+    def surfaces(i, snap=None):
         surf = {}
+        if dom and snap is not None:
+            doc = humic.doc_mg_per_L(float(snap.pH[i]), dom['doc_ref'], dom['pH_ref'], dom['slope'])
+            surf['Dom'] = humic.dom_surface(humic.OM_PER_DOC * doc * 1e-3 * float(snap.W[i]))
         fe = fe_mol_per_kg * fe_reactive * soil_kg[i]
         if fe > 0:
             surf['Hfo'] = solver.Surface({'Hfo_w': 0.2 * fe, 'Hfo_s': 0.005 * fe}, 600.0, 89.0 * fe)
@@ -237,20 +245,21 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         return out
 
     def equilibrate(snap, hostt):
-        part = {p: np.zeros_like(tot) for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'mineral')}
+        part = {p: np.zeros_like(tot) for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'dom', 'mineral')}
         for i in range(nz):
             totals = dict(hostt[i])
             for j, m in enumerate(metals):
                 totals[lab[m]] = max(tot[i, j], 1e-30)
             r = sv.solve(totals, pH=float(snap.pH[i]), W=float(snap.W[i]), T=T or 288.15,
-                         cec={'X': float(cec_x(snap)[i])}, surfaces=surfaces(i),
+                         cec={'X': float(cec_x(snap)[i])}, surfaces=surfaces(i, snap),
                          fix_si=[('CO2(g)', float(np.log10(max(snap.pco2[i], 1e-6))), 'CO3-2')],
                          minerals=list(minerals), guess=guesses[i])
             guesses[i] = dict(r.la)
             for j, m in enumerate(metals):
                 p = r.partition[lab[m]]
                 for k in part:
-                    part[k][i, j] = p[k]
+                    part[k][i, j] = p.get(k, 0.0)
+        part['sorbed'] -= part['dom']          # 'sorbed' = solid surfaces only
         return part
 
     for snap in snaps:
@@ -277,7 +286,8 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
             tot += src * dt
             cum_rel += (src * snap.dz[:, None]).sum(0) * dt
             part = equilibrate(snap, hostt)
-            c = part['dissolved'] / snap.W[:, None]          # mol/kgw
+            mob = part['dissolved'] + part['dom']             # DOM-bound metal moves with the water
+            c = mob / snap.W[:, None]                         # mol/kgw
             flux = snap.q[:, None] * 1000.0 * c               # mol/m2/yr leaving each cell downward
             inflow = np.vstack([np.zeros((1, len(metals))), flux[:-1]])
             if slow:
@@ -292,7 +302,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
                 tot += rel - age
             if implicit_sub:
                 # backward-Euler upwind on the total, c = fd * T / W (fd lagged)
-                fd = part['dissolved'] / np.maximum(tot, 1e-300)
+                fd = mob / np.maximum(tot, 1e-300)
                 a = snap.q[:, None] * 1000.0 * fd / snap.W[:, None] * dt / snap.dz[:, None]
                 newt = np.zeros_like(tot)
                 for i in range(nz):
