@@ -15,7 +15,8 @@ OUT = os.environ.get('TE_OUT', '/home/user/te_runs/')
 def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
                  omrain, poro, moist, q, w, zdust=0.2, restart='false',
                  rstrt='self', mix=1, cec, alpha=3.4, ca_rain, n_rain,
-                 sld=None, dust=None, psd=True, nstep=10, psdrain=None):
+                 sld=None, dust=None, psd=True, nstep=10, psdrain=None,
+                 uptake=False):
     mi.get_input_frame(outdir=OUT, runname=run, ztot=ztot, nz=nz, ttot=ttot,
                        temp=temp, fdust=fdust, fdust2=0, taudust=taudust,
                        omrain=omrain, zom=ztot, poro=poro, moistsrf=moist,
@@ -34,8 +35,9 @@ def write_common(run, *, ztot=0.5, nz=30, ttot, temp, fdust=0., taudust=0.,
     if sld:
         aq_list += ['si', 'al', 'fe2', 'fe3']
     mi.get_input_tracers(outdir=OUT, runname=run, sld_list=sld_list,
-                         aq_list=aq_list, gas_list=['pco2', 'po2'] if sld else ['pco2'],
-                         exrxn_list=['fe2o2'] if sld else [])
+                         aq_list=aq_list, gas_list=['pco2', 'po2'] if (sld or uptake) else ['pco2'],
+                         exrxn_list=(['fe2o2'] if sld else [])
+                         + (['g2k', 'g2ca', 'g2mg'] if uptake else []))
     rain = [('ca', ca_rain)] + [(sp, 1e-20) for sp in aq_list
                                      if sp not in ('ca', 'fe3')]
     if sld:
@@ -81,10 +83,11 @@ if __name__ == '__main__':
     ap.add_argument('--om', type=float, default=300)
     ap.add_argument('--ca', type=float, default=5e-6)
     ap.add_argument('--n', type=float, default=15)  # g N/m2/yr
+    ap.add_argument('--uptake', action='store_true')  # crop K, Ca, Mg uptake (g2k/g2ca/g2mg)
     a = ap.parse_args()
     write_common(a.name, ttot=a.ttot, temp=a.temp, omrain=a.om, poro=0.5,
                  moist=a.moist, q=a.q, w=a.w, cec=a.cec, ca_rain=a.ca,
-                 n_rain=a.n)
+                 n_rain=a.n, uptake=a.uptake)
     print('rc', run(a.name))
 
 
@@ -116,7 +119,7 @@ SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
 
 def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
           cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10, pulse=None, psdrain=None,
-          n_rain=0.):
+          n_rain=0., uptake=False):
     """Restart from spin-up and apply rock continuously at dose t/ha/yr, or,
     with pulse = tau (yr, < 1), once: dose t/ha spread over the first tau years.
     n_rain (g N/m2/yr, as NH4NO3) should match the spin-up so the fertiliser
@@ -133,5 +136,5 @@ def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
                  omrain=omrain, poro=0.5, moist=moist, q=q, w=w, zdust=zdust,
                  restart='true', rstrt=os.path.join(OUT, spin), mix=3, cec=cec, ca_rain=ca_rain,
                  n_rain=n_rain, sld=minerals + SECONDARY, dust=ROCKS[rock] if dose > 0 else [],
-                 nstep=nstep, psdrain=psdrain)
+                 nstep=nstep, psdrain=psdrain, uptake=uptake)
     return run(name)
