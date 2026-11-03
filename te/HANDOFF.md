@@ -12,7 +12,7 @@ release, aqueous speciation, exchange, DLM surface complexation on Fe oxides, hu
 solubility caps, Cr redox (Mn oxides), plant uptake. Prototype chemistry in Python vs PHREEQC first.
 
 Status:
-- Build: apt-get install gfortran libopenblas-dev; make --file=makefile_gmd24 -> scepter_gmd24.
+- Build: apt-get update && apt-get install gfortran libopenblas-dev; make --file=makefile_gmd24 -> scepter_gmd24.
   pip install scipy pandas matplotlib phreeqpython.
 - te/upland.py: spin-up (inert + g2 OM + CEC, Ca rain sets pH; 10 kyr, w=1e-3, ~25 s) and
   amend() (restart, Hillhouse la/agt/fo/anl as dust, tilling mix, 2 yr ~40 s).
@@ -78,7 +78,11 @@ and Co) or flat Cu, which points to Mn oxides (Ni) and SOM (Cu).
 Next steps:
 1. Arsenic batch chemistry done (edge_AsV, edge_AsIII match PHREEQC). Next for As: competition
    from phosphate, silicate and bicarbonate on Hfo (basalt releases Si), then As in the column.
-   Then Mn-oxide sorption for Ni/Co.
+   Mn oxide done: Tonkin et al. 2004 HMO DLM (Hmo_x/Hmo_y) for Ni, Co, Cu, Zn, Cd, Pb, Mn,
+   validated against PHREEQC. Gotchas: minteq's Co master is Co+3 and Mn has several valences,
+   so carry Co(2)/Mn(2) as decoupled valences. Equilibrium HMO reproduces the Sabah-like Co and
+   Mn falls but only part of the Ni fall, and every oxide model over-predicts the Cu fall:
+   next pieces are SOM binding (Cu, Pb) and a slow Ni ageing/incorporation pool on Mn oxide.
 2. Release from host minerals for Ni and Cu, driven by SCEPTER's per-mineral dissolution rates
    (read from the amend() run output), then Vermont end to end.
 3. Per-soil Hfo site densities from Fe-oxide content: ~0.6 mol Fe/kgw if 1.5% Fe oxide were all ferrihydrite at
