@@ -76,7 +76,9 @@ Fe-oxide sorption + exchange reproduce the Pb fall and flat Cd, but not the Ni f
 and Co) or flat Cu, which points to Mn oxides (Ni) and SOM (Cu).
 
 Next steps:
-1. Arsenic (As(V)/As(III) on Hfo, minteq constants), then Mn-oxide sorption for Ni/Co.
+1. Arsenic batch chemistry done (edge_AsV, edge_AsIII match PHREEQC). Next for As: competition
+   from phosphate, silicate and bicarbonate on Hfo (basalt releases Si), then As in the column.
+   Then Mn-oxide sorption for Ni/Co.
 2. Release from host minerals for Ni and Cu, driven by SCEPTER's per-mineral dissolution rates
    (read from the amend() run output), then Vermont end to end.
 3. Per-soil Hfo site densities from Fe-oxide content: ~0.6 mol Fe/kgw if 1.5% Fe oxide were all ferrihydrite at

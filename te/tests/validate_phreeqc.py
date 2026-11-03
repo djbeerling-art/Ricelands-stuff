@@ -41,6 +41,11 @@ CASES.append(('edge_CrVI', base(o2_si=-0.68, solution={'Na': 0.01, 'Cl': 0.011, 
               {'metals': ['Cr'], 'redox': 'coupled', 'free': 'CrO4-2'}))
 CASES.append(('edge_CrIII', base(pe=2, solution={'Na': 0.01, 'Cl': 0.011, 'Cr(3)': 1e-6}),
               {'metals': ['Cr'], 'redox': 'coupled', 'free': 'Cr(OH)2+'}))
+# Arsenic: As(V) in decoupled mode at oxic pe; As(III) coupled at low pe (as Cr(III))
+CASES.append(('edge_AsV', base(solution={'Na': 0.01, 'Cl': 0.011, 'As(5)': 1e-6}),
+              {'metals': ['As(5)'], 'free': 'H2AsO4-'}))
+CASES.append(('edge_AsIII', base(pe=0, solution={'Na': 0.01, 'Cl': 0.011, 'As(3)': 1e-6}),
+              {'metals': ['As'], 'redox': 'coupled', 'free': 'H3AsO3'}))
 CASES.append(('edge_Ni_W0.5', base(W=0.5, solution={'Na': 0.01, 'Cl': 0.011, 'Ni': 1e-6}),
               {'metals': ['Ni']}))
 soil = {'Na': 1e-3, 'K': 2e-4, 'Ca': 2e-3, 'Mg': 5e-4, 'Cl': 4e-3, 'S(6)': 5e-4,
@@ -70,6 +75,10 @@ def run_case(name, case, opt):
     for m in METALS:
         if m == 'Cu':
             val['Cu'] = ['Cu(2)']
+    if opt.get('redox', 'decoupled') == 'decoupled':
+        for l in labels:
+            if '(' in l and thermo_base(l) not in val:
+                val[thermo_base(l)] = [l]
     sy = system.build(db, els, redox=opt.get('redox', 'decoupled'), valences=val,
                       exchangers=['X'] if case['cec'] else [],
                       surfaces=['Hfo_w', 'Hfo_s'] if case['hfo'] else [],
@@ -98,7 +107,7 @@ def run_case(name, case, opt):
         for m in opt['metals']:
             lab = m
             k = sy.index(sy.aliases[lab])
-            total = r['SYS_' + m]
+            total = r['SYS_' + thermo_base(m)]
             # PHREEQC pools from its own species, using the shared stoichiometry
             # (MOL() returns mol/kgw for exchange and surface species too)
             ph = {'dissolved': sum(r['MOL_' + n] * r['W'] * sy.aq.nu[i, k]
