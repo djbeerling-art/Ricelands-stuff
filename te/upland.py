@@ -154,5 +154,6 @@ def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
                  omrain=omrain, poro=0.5, moist=moist, q=q, w=w, zdust=zdust,
                  restart='true', rstrt=os.path.join(OUT, spin), mix=3, cec=cec, ca_rain=ca_rain,
                  n_rain=n_rain, sld=minerals + SECONDARY, dust=ROCKS[rock] if dose > 0 else [],
-                 nstep=nstep, psdrain=psdrain, uptake=uptake, parent=parent)
+                 nstep=nstep, psdrain=psdrain, uptake=uptake, parent=parent,
+                 psd=os.environ.get('TE_PSD', 'true') == 'true')
     return run(name)
