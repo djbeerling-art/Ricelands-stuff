@@ -26,10 +26,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from . import solver
+from . import humic, solver
 
 MW_INRT = 258.162          # SCEPTER 'inrt' is kaolinite (mwtka)
-SCEPTER_AQ = {'ca': 'Ca', 'mg': 'Mg', 'k': 'K', 'na': 'Na', 'al': 'Al', 'si': 'Si'}
+SCEPTER_AQ = {'ca': 'Ca', 'mg': 'Mg', 'k': 'K', 'na': 'Na', 'al': 'Al', 'si': 'Si',
+              'no3': 'N(5)'}   # nitrate from N fertiliser (anion, carried if the system has N(5))
 MW_EL = {'Ni': 58.693, 'Cu': 63.546, 'Zn': 65.38, 'Pb': 207.2, 'Cd': 112.41,
          'Co': 58.933, 'Cr': 51.996, 'As': 74.922, 'Mn': 54.938}
 
@@ -133,8 +134,8 @@ def _dens(snap):
 
 
 def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
-        fe_reactive=0.1, hmo_g_per_kg=0.0, extra_totals=None, minerals=(),
-        valence_labels=None, courant=0.9, T=None, max_sub=None):
+        fe_reactive=0.1, hmo_g_per_kg=0.0, hum_g_per_kg=0.0, extra_totals=None, minerals=(),
+        valence_labels=None, courant=0.9, T=None, max_sub=None, cec_mode='total'):
     """Run trace metals through SCEPTER snapshots.
 
     sv        : solver.Speciator built with the majors, metals, X, Hfo_w/Hfo_s,
@@ -144,12 +145,21 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
     fe_mol_per_kg, fe_reactive : soil Fe oxide (mol Fe/kg soil) and its
                 ferrihydrite-like fraction, giving D&M Hfo sites
     hmo_g_per_kg : hydrous Mn oxide (Tonkin 2004) per kg soil
+    hum_g_per_kg : active humic acid (simplified WHAM VII, chem.humic) per kg
+                soil; scalar or one value per cell (e.g. 0.5 x SOM)
     valence_labels: {metal: label passed to the solver}, e.g. {'As': 'As(5)'}
+    cec_mode  : 'total' offers SCEPTER's whole CEC to the TE exchanger (sites
+                SCEPTER leaves H-occupied become HX); 'eff' offers only the
+                charge SCEPTER holds as exchangeable base cations and Al.
     """
+    def cec_x(snap):
+        return snap.cec_total if cec_mode == 'total' else np.maximum(snap.cec, 1e-6)
+
     lab = {m: (valence_labels or {}).get(m, m) for m in metals}
     s0 = snaps[0]
     nz = len(s0.z)
     soil_kg = (1 - s0.poro) * 1000.0 * 2.65   # only for site densities
+    hum = np.broadcast_to(np.asarray(hum_g_per_kg, float), (nz,))
     tot = np.zeros((nz, len(metals)))
     if background:
         for j, m in enumerate(metals):
@@ -170,13 +180,18 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         if hmo_g_per_kg > 0:
             g = hmo_g_per_kg * soil_kg[i]
             surf['Hmo'] = solver.Surface({'Hmo_x': g * 2.1e-3 * 0.64, 'Hmo_y': g * 2.1e-3 * 0.36}, 746.0, g)
+        h = hum[i] * soil_kg[i]
+        if h > 0:
+            surf['Hum'] = humic.surface(h)
         return surf
 
     def solve(snap, i, totals, W):
         return sv.solve(totals, pH=float(snap.pH[i]), W=W, T=T or 288.15,
-                        cec={'X': float(snap.cec_total[i])}, surfaces=surfaces(i),
+                        cec={'X': float(cec_x(snap)[i])}, surfaces=surfaces(i),
                         fix_si=[('CO2(g)', float(np.log10(max(snap.pco2[i], 1e-6))), 'CO3-2')],
                         minerals=list(minerals))
+
+    known = set(sv.s.comp_elem.values()) | set(sv.s.aliases)
 
     def host_totals(snap):
         """Major-element totals per cell such that, with the TE exchanger and
@@ -186,7 +201,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         big = 1e6
         out = []
         for i in range(nz):
-            sol = {k: max(v[i], 1e-20) for k, v in snap.diss.items()}
+            sol = {k: max(v[i], 1e-20) for k, v in snap.diss.items() if k in known}
             if extra_totals:
                 sol.update(extra_totals)
             r = solve(snap, i, {k: v * big for k, v in sol.items()}, big)
@@ -204,7 +219,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
             for j, m in enumerate(metals):
                 totals[lab[m]] = max(tot[i, j], 1e-30)
             r = sv.solve(totals, pH=float(snap.pH[i]), W=float(snap.W[i]), T=T or 288.15,
-                         cec={'X': float(snap.cec_total[i])}, surfaces=surfaces(i),
+                         cec={'X': float(cec_x(snap)[i])}, surfaces=surfaces(i),
                          fix_si=[('CO2(g)', float(np.log10(max(snap.pco2[i], 1e-6))), 'CO3-2')],
                          minerals=list(minerals), guess=guesses[i])
             guesses[i] = dict(r.la)

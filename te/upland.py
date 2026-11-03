@@ -115,9 +115,12 @@ SECONDARY = ['ka', 'gb', 'amsi', 'gt', 'cc']
 
 
 def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
-          cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10, pulse=None, psdrain=None):
+          cec, ca_rain, omrain=300, w=0., zdust=0.2, nstep=10, pulse=None, psdrain=None,
+          n_rain=0.):
     """Restart from spin-up and apply rock continuously at dose t/ha/yr, or,
-    with pulse = tau (yr, < 1), once: dose t/ha spread over the first tau years."""
+    with pulse = tau (yr, < 1), once: dose t/ha spread over the first tau years.
+    n_rain (g N/m2/yr, as NH4NO3) should match the spin-up so the fertiliser
+    acidity carries on through the amendment run."""
     d = os.path.join(OUT, name)
     if os.path.exists(d):
         shutil.rmtree(d)
@@ -129,6 +132,6 @@ def amend(spin, name, *, rock='hillhouse', dose=40., years=40., temp, q, moist,
                  taudust=pulse if pulse else years,
                  omrain=omrain, poro=0.5, moist=moist, q=q, w=w, zdust=zdust,
                  restart='true', rstrt=os.path.join(OUT, spin), mix=3, cec=cec, ca_rain=ca_rain,
-                 n_rain=0., sld=minerals + SECONDARY, dust=ROCKS[rock] if dose > 0 else [],
+                 n_rain=n_rain, sld=minerals + SECONDARY, dust=ROCKS[rock] if dose > 0 else [],
                  nstep=nstep, psdrain=psdrain)
     return run(name)
