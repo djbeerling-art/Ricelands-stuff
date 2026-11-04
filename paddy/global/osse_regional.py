@@ -43,6 +43,7 @@ REGIONS = {   # lon0, lon1, lat0, lat1 (same boxes as detect_ch4.py)
     'West Bengal–Bihar': (84.0, 89.0, 21.5, 27.5), 'Java': (105.0, 114.6, -8.8, -5.8),
     'Central Luzon': (120.0, 121.5, 14.6, 16.3), 'Irrawaddy Delta': (94.3, 96.6, 15.5, 18.5),
     'Yangtze middle/lower': (111.0, 122.0, 27.5, 32.5), 'Punjab–Haryana': (73.8, 77.5, 28.5, 32.5),
+    'Rio Grande do Sul': (-57.7, -50.0, -33.8, -28.0),
 }
 CUTS = {1: 0.134, 5: 0.322, 10: 0.443, 25: 0.603}
 ADOPT = [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
