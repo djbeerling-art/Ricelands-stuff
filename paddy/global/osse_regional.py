@@ -136,30 +136,43 @@ def run_region(name, c, a):
                             leak_other_pct=100*leak/ER0,
                             z_before_after=f*ER0/np.sqrt(var_ba), z_paired=f/np.sqrt(var_p),
                             z_ba_noiav=f*ER0/(np.sqrt(2)*sd_tot)))
-    # adoption x time: treated block = a compact fraction `ad` of the delta's rice, one season of data in
-    # year Y with that year's cut; before/after on the treated block total, paired = treated block vs the rest
-    Sh = np.linalg.inv(F + np.diag(1/np.maximum(sa, 1e-30))); A = Sh @ F
-    # treated block grows outward from the rice-weighted centre of the delta, cell by cell
+    # adoption x time, as a two-period detection problem (one season before treatment, one season in year Y):
+    #   persistent states (rice and other per cell, bias blocks) are shared by both seasons and keep their priors;
+    #   the treatment effect alpha (fractional cut of the treated block's rice) appears only after, with a flat prior;
+    #   natural change between the seasons is an extra 'after' state: a uniform rice anomaly gamma (prior iav_rice for
+    #   before/after; flat for paired, i.e. difference-in-differences against the untreated rice) and a uniform
+    #   other-source anomaly (prior iav_other). Paired adds block-to-block residual variability 2*iav_pair^2 per season
+    #   pair. z = cut / sd(alpha). This credits only what the observations add: the per-cell priors cannot detect it.
+    Fr = F[:, :m]                                                            # information against rice states
+    Fo = F[:, m:2*m]
     idx = np.nonzero(inbox & (rice > 0))[0]
     cx, cy = np.average(LO[idx], weights=rice[idx]), np.average(LA[idx], weights=rice[idx])
     idx = idx[np.argsort((LO[idx] - cx)**2*np.cos(np.deg2rad(cy))**2 + (LA[idx] - cy)**2)]
     cr = np.cumsum(rice[idx])/ER0
+    u = rice*inbox; o_ = other*1.0
+    def sd_alpha(v, paired):
+        cols = [-v, u, o_]                                                   # alpha, gamma, other anomaly (rice/other space)
+        Fx = [Fr @ cols[0], Fr @ cols[1], Fo @ cols[2]]                      # cross-information with persistent states
+        G = np.zeros((3, 3)); blocks = [(Fr, 0), (Fr, 0), (Fo, 1)]
+        Kv = [cols[0], cols[1], cols[2]]
+        sub = lambda i: (F[:m, :m] if i < 2 else F[m:2*m, m:2*m], F[:m, m:2*m])
+        rr, ro, oo = F[:m, :m], F[:m, m:2*m], F[m:2*m, m:2*m]
+        G[0, 0] = Kv[0] @ rr @ Kv[0]; G[1, 1] = Kv[1] @ rr @ Kv[1]; G[2, 2] = Kv[2] @ oo @ Kv[2]
+        G[0, 1] = G[1, 0] = Kv[0] @ rr @ Kv[1]; G[0, 2] = G[2, 0] = Kv[0] @ ro @ Kv[2]; G[1, 2] = G[2, 1] = Kv[1] @ ro @ Kv[2]
+        X = np.column_stack(Fx)
+        P = np.diag([1e-12, 1e-12 if paired else 1/a['iav_rice']**2, 1/a['iav_other']**2])
+        Ixx = 2*F + np.diag(1/np.maximum(sa, 1e-30))
+        S = G + P - X.T @ np.linalg.solve(Ixx, X)                           # Schur complement: marginal info on (a, g, o)
+        return np.sqrt(np.linalg.inv(S)[0, 0])
     for ad in ADOPT:
         T = np.zeros(m, bool); T[idx[:np.searchsorted(cr, ad - 1e-9) + 1]] = True
-        Un = inbox & ~T; ET = rice[T].sum(); near = np.zeros(m, bool)                     # margin cells: split by
-        d2 = lambda msk: ((LO[:, None] - LO[msk][None])**2 + (LA[:, None] - LA[msk][None])**2).min(1)
-        near = ~inbox & (d2(T) <= (d2(Un) if Un.any() else np.inf))                        # nearest block
-        hT = np.concatenate([T*1., np.zeros(m + nbk)])
-        leakT = hT @ A @ oth(T | near)
-        var_ba = 2*(hT @ Sh @ hT + (a['iav_rice']*ET)**2 + (a['iav_other']*leakT)**2)
-        if Un.sum() > 0 and rice[Un].sum() > 0:
-            hq = np.concatenate([T/ET - Un/rice[Un].sum(), np.zeros(m + nbk)])
-            l1, l2 = hq @ A @ oth(T | near), hq @ A @ oth(Un | (~inbox & ~near))
-            var_q = hq @ Sh @ hq + 2*a['iav_pair']**2 + a['iav_other']**2*(l1**2 + l2**2)
-        else: var_q = np.inf
+        Un = inbox & ~T
+        v = rice*T
+        sb = sd_alpha(v, False)
+        sp = np.sqrt(sd_alpha(v, True)**2 + 2*2*a['iav_pair']**2) if (Un.any() and rice[Un].sum() > 0) else np.inf
         for yr, f in enumerate(ycut, 1):
             AD_ROWS.append(dict(region=name, adoption=ad, treated_Mha=E[T].sum()/E[inbox].sum()*AREA[name], year=yr, cut=f,
-                                z_before_after=f*ET/np.sqrt(var_ba), z_paired=f/np.sqrt(var_q)))
+                                z_before_after=f/sb, z_paired=f/sp, sd_alpha_ba=sb, sd_alpha_paired=sp))
     # peak column signal of the full-adoption cut in year 10, mean wind from the west
     K = jacobian(LO, LA, g, a['U'], 0., a['spread'])
     for o in out: o['dXmax_ppb'] = cuts[o['year']]*np.abs(K @ rice).max()
