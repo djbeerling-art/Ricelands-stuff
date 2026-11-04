@@ -41,6 +41,8 @@ REGIONS = {   # lon0, lon1, lat0, lat1 (same boxes as detect_ch4.py)
     'Yangtze middle/lower': (111.0, 122.0, 27.5, 32.5), 'Punjab–Haryana': (73.8, 77.5, 28.5, 32.5),
 }
 CUTS = {1: 0.134, 5: 0.322, 10: 0.443, 25: 0.603}
+ADOPT = [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+YCUT, AD_ROWS, AREA = [], [], {}
 
 def region_grid(c, box, g, margin):
     a0, a1, b0, b1 = box
@@ -67,6 +69,9 @@ def jacobian(LO, LA, g, U, theta, spread):
 def run_region(name, c, a):
     g, margin = a['grid'], a['margin']
     LO, LA, inbox, E = region_grid(c, REGIONS[name], g, margin)
+    a0, a1, b0, b1 = REGIONS[name]
+    AREA[name] = (c.area_irr + c.area_rf)[c.lon.between(a0, a1) & c.lat.between(b0, b1)].sum()/1e6
+    if E[inbox].sum() <= 0: return []
     m = len(LO); sec = a['days']*86400.
     rice = E/sec                                                             # kg/s during the season
     other = np.full(m, a['other']*rice[inbox].sum()/max(inbox.sum(), 1))    # uniform other sources, same mean density
@@ -108,6 +113,30 @@ def run_region(name, c, a):
                             leak_other_pct=100*leak/ER0,
                             z_before_after=f*ER0/np.sqrt(var_ba), z_paired=f/np.sqrt(var_p),
                             z_ba_noiav=f*ER0/(np.sqrt(2)*sd_tot)))
+    # adoption x time: treated block = a compact fraction `ad` of the delta's rice, one season of data in
+    # year Y with that year's cut; before/after on the treated block total, paired = treated block vs the rest
+    Sh = np.linalg.inv(F + np.diag(1/np.maximum(sa, 1e-30))); A = Sh @ F
+    # treated block grows outward from the rice-weighted centre of the delta, cell by cell
+    idx = np.nonzero(inbox & (rice > 0))[0]
+    cx, cy = np.average(LO[idx], weights=rice[idx]), np.average(LA[idx], weights=rice[idx])
+    idx = idx[np.argsort((LO[idx] - cx)**2*np.cos(np.deg2rad(cy))**2 + (LA[idx] - cy)**2)]
+    cr = np.cumsum(rice[idx])/ER0
+    for ad in ADOPT:
+        T = np.zeros(m, bool); T[idx[:np.searchsorted(cr, ad - 1e-9) + 1]] = True
+        Un = inbox & ~T; ET = rice[T].sum(); near = np.zeros(m, bool)                     # margin cells: split by
+        d2 = lambda msk: ((LO[:, None] - LO[msk][None])**2 + (LA[:, None] - LA[msk][None])**2).min(1)
+        near = ~inbox & (d2(T) <= (d2(Un) if Un.any() else np.inf))                        # nearest block
+        hT = np.concatenate([T*1., np.zeros(m + nbk)])
+        leakT = hT @ A @ oth(T | near)
+        var_ba = 2*(hT @ Sh @ hT + (a['iav_rice']*ET)**2 + (a['iav_other']*leakT)**2)
+        if Un.sum() > 0 and rice[Un].sum() > 0:
+            hq = np.concatenate([T/ET - Un/rice[Un].sum(), np.zeros(m + nbk)])
+            l1, l2 = hq @ A @ oth(T | near), hq @ A @ oth(Un | (~inbox & ~near))
+            var_q = hq @ Sh @ hq + 2*a['iav_pair']**2 + a['iav_other']**2*(l1**2 + l2**2)
+        else: var_q = np.inf
+        for yr, f in enumerate(YCUT, 1):
+            AD_ROWS.append(dict(region=name, adoption=ad, treated_Mha=E[T].sum()/E[inbox].sum()*AREA[name], year=yr, cut=f,
+                                z_before_after=f*ET/np.sqrt(var_ba), z_paired=f/np.sqrt(var_q)))
     # peak column signal of the full-adoption cut in year 10, mean wind from the west
     K = jacobian(LO, LA, g, a['U'], 0., a['spread'])
     for o in out: o['dXmax_ppb'] = CUTS[o['year']]*np.abs(K @ rice).max()
@@ -126,6 +155,9 @@ def main(cells_f, prefix):
         tot = c.ctrl_kg.sum(); CUTS.update({y: -c[f'd{y}'].sum()/tot for y in CUTS})
     else:
         c['ctrl_kg'] = c.area_irr*float(opt('ef_irr', 120)) + c.area_rf*float(opt('ef_rf', 77))
+    yc = pd.read_csv(opt('yearly', '/mnt/project-files/fair/v25fr_batch1/yearly_150.csv'))
+    YCUT.extend((-yc.dch4_mt/yc.ctrl_ch4_mt).tolist())       # yearly fractional cut, years 1..25
+    if opt('cells_dch4'): YCUT[:] = list(np.interp(np.arange(1, 26), list(CUTS), [CUTS[k] for k in CUTS]))
     names = opt('regions', ';'.join(REGIONS)).split(';')
     rows = []
     for n in names:
@@ -144,6 +176,8 @@ def main(cells_f, prefix):
     one['seasons_needed_paired'] = one.apply(lambda r: need(r, 'z_paired'), axis=1)
     out = out.merge(one[['region', 'year', 'seasons_needed_before_after', 'seasons_needed_paired']], on=['region', 'year'])
     out.to_csv(f'{prefix}_regional.csv', index=False, float_format='%.3g')
+    ad = pd.DataFrame(AD_ROWS); ad.to_csv(f'{prefix}_adoption.csv', index=False, float_format='%.3g')
+    plot_adoption(ad, prefix)
     print(f'U {a["U"]} m/s, sigr {a["sigr"]} ppb, smod {a["smod"]} ppb, clear {a["fclear"]}, prior rice {a["sa_rice"]}, other {a["sa_other"]} x{a["other"]}')
     print(out[out.seasons == 1].round(2).to_string(index=False))
     import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
@@ -155,6 +189,27 @@ def main(cells_f, prefix):
         ax.axvline(2, color='#888', ls='--', lw=0.8); ax.set_title(t, fontsize=9); ax.set_xlabel('z, one season of TROPOMI data')
         ax.spines[['top', 'right']].set_visible(False)
     axs[0].legend(frameon=False, fontsize=8); fig.tight_layout(); fig.savefig(f'{prefix}_regional.png', dpi=160)
+
+def plot_adoption(ad, prefix):
+    """Per delta: detection statistic (one season of data) against treated area and year since first application."""
+    import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
+    regs = [r for r in ad.region.unique()]
+    fig, axs = plt.subplots(2, len(regs), figsize=(2.3*len(regs), 5.2), sharex=True, sharey=True, squeeze=False)
+    lev = [0, 1, 2, 3, 4, 6, 8]
+    for j, r in enumerate(regs):
+        s = ad[ad.region == r]
+        for i, col in enumerate(['z_paired', 'z_before_after']):
+            P = s.pivot(index='adoption', columns='year', values=col)
+            ax = axs[i, j]; Z = np.nan_to_num(P.values, posinf=0)
+            cs = ax.contourf(P.columns, 100*P.index, Z, levels=lev, cmap='Blues', extend='max')
+            ax.contour(P.columns, 100*P.index, Z, levels=[2], colors='#c0392b', linewidths=1.4)
+            if i == 0: ax.set_title(f'{r}\n({s.treated_Mha.max():.1f} Mha)', fontsize=8)
+            if i == 1: ax.set_xlabel('Year of deployment', fontsize=8)
+            ax.set_yscale('log'); ax.set_yticks([1, 3, 10, 30, 100], ['1', '3', '10', '30', '100']); ax.tick_params(labelsize=7)
+    axs[0, 0].set_ylabel('Paired blocks\n% of delta rice treated', fontsize=8)
+    axs[1, 0].set_ylabel('Before/after\n% of delta rice treated', fontsize=8)
+    cb = fig.colorbar(cs, ax=axs, shrink=0.7, pad=0.01); cb.set_label('z (one season of TROPOMI data); red line z = 2', fontsize=8)
+    fig.savefig(f'{prefix}_adoption.png', dpi=160, bbox_inches='tight')
 
 if __name__ == '__main__':
     main(*[a for a in sys.argv[1:] if not a.startswith('--')])
