@@ -13,6 +13,7 @@ Conventions follow PHREEQC so the two can be compared species by species:
               (surface master 'activity' = moles, aqueous = molal)
   DLM         sigma = sqrt(8000 eps eps0 R T I) sinh(F psi / 2RT)
 """
+import re
 import math
 from dataclasses import dataclass, field
 
@@ -343,6 +344,10 @@ class Speciator:
                      lg=lg, iterations=it_total)
         hum_rows = np.array([n.startswith('Hum_') for n in s.surf.names], dtype=bool)   # humic (organic) surface species
         dom_rows = np.array([n.startswith('Dom_') for n in s.surf.names], dtype=bool)   # dissolved organic matter
+        # surface species grouped by site master (Hfo_w, Hfo_s, Hmo_x, Hmo_y, Clay_w, Clay_s, ...)
+        site_of = [(re.match(r'^([A-Z][a-z]+_[a-z])', n) or [None, None])[1] for n in s.surf.names]
+        site_rows = {g: np.array([x == g for x in site_of], dtype=bool)
+                     for g in sorted(set(x for x in site_of if x and not x.startswith(('Hum_', 'Dom_'))))}
         for k in range(nb):
             if not present[k] or fixed[k]:
                 continue
@@ -354,6 +359,7 @@ class Speciator:
                 'sorbed_hum': float(s.surf.nu[hum_rows, k] @ n_sf[hum_rows]) if hum_rows.any() else 0.0,
                 'dom': float(s.surf.nu[dom_rows, k] @ n_sf[dom_rows]) if dom_rows.any() else 0.0,
                 'mineral': float(sum(ph_si[p][0][k] * nm[p] for p in active)),
+                **{'site:' + g: float(s.surf.nu[rw, k] @ n_sf[rw]) for g, rw in site_rows.items() if rw.any()},
                 'free': float(10 ** la[k] * W / 10 ** lg.get(s.basis[k], 0.0))
                 if s.basis[k] in lg else float('nan'),
             }

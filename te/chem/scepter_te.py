@@ -35,6 +35,11 @@ MW_EL = {'Ni': 58.693, 'Cu': 63.546, 'Zn': 65.38, 'Pb': 207.2, 'Cd': 112.41,
          'Co': 58.933, 'Cr': 51.996, 'As': 74.922, 'Mn': 54.938}
 
 
+# Site classes for the extraction-definition test. Hmo_x is Tonkin's lower-affinity
+# Mn-oxide site (Pb log K far below Hmo_y), grouped with the weak sites.
+WEAK_SITES = ['Hfo_w', 'Hmo_x', 'Clay_w']
+STRONG_SITES = ['Hfo_s', 'Hmo_y', 'Clay_s']
+
 def _table(path):
     with open(path) as f:
         head = f.readline().split()
@@ -191,7 +196,9 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         for j, m in enumerate(metals):
             tot[:, j] = background.get(m, 0.0)
     res = TEResult(z=s0.z, metals=list(metals),
-                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'dom', 'mineral', 'total', 'slow')})
+                   pools={p: [] for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'dom', 'mineral', 'total', 'slow',
+                                          'sorbed_weak', 'sorbed_strong')})
+    res.occ = []          # per snapshot: {site: {element: (nz,) mol on site}, site+'_tot': (nz,) site moles}
     S = np.zeros((nz, len(metals))); k_rel = None
     if slow:
         for j, m in enumerate(metals):
@@ -251,7 +258,9 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         return out
 
     def equilibrate(snap, hostt):
-        part = {p: np.zeros_like(tot) for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'dom', 'mineral')}
+        part = {p: np.zeros_like(tot) for p in ('dissolved', 'exchange', 'sorbed', 'sorbed_hum', 'dom', 'mineral',
+                                                 'sorbed_weak', 'sorbed_strong')}
+        occ = {}
         for i in range(nz):
             totals = dict(hostt[i])
             for j, m in enumerate(metals):
@@ -265,6 +274,20 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
                 p = r.partition[lab[m]]
                 for k in part:
                     part[k][i, j] = p.get(k, 0.0)
+                part['sorbed_weak'][i, j] = sum(p.get('site:' + g, 0.0) for g in WEAK_SITES)
+                part['sorbed_strong'][i, j] = sum(p.get('site:' + g, 0.0) for g in STRONG_SITES)
+            # site occupancy by every element (metals, Ca, Mg, Al, ...), and site totals
+            for sf in surfaces(i, snap).values():
+                for g, ntot in sf.sites.items():
+                    if g not in WEAK_SITES + STRONG_SITES:
+                        continue
+                    d = occ.setdefault(g, {})
+                    d.setdefault('_tot', np.zeros(nz))[i] = ntot
+                    for el, p in r.partition.items():
+                        v = p.get('site:' + g, 0.0)
+                        if v > 0:
+                            d.setdefault(el, np.zeros(nz))[i] = v
+        equilibrate.occ = occ
         part['sorbed'] -= part['dom']          # 'sorbed' = solid surfaces only
         return part
 
@@ -326,6 +349,7 @@ def run(sv, snaps, metals, content, *, background=None, fe_mol_per_kg=0.0,
         for k in part:
             res.pools[k].append(part[k])
         res.pools['total'].append(tot.copy())
+        res.occ.append(getattr(equilibrate, 'occ', {}))
         res.pools['slow'].append(S.copy())
         res.released.append(cum_rel.copy())
         res.leached.append(cum_lea.copy())
