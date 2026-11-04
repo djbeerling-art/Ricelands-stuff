@@ -24,6 +24,9 @@
 # Usage: python3 osse_regional.py <cells150.csv> <out prefix> [--grid=0.25] [--margin=1] [--U=4] [--sigr=12] [--smod=8]
 #        [--pix=38.5] [--fclear=0.1] [--days=113] [--sa_rice=0.5] [--sa_other=0.5] [--other=1] [--spread=0.25]
 #        [--regions=Mekong Delta;Bangladesh;...] [--seed=1] [--cells_dch4=...]
+#        [--era5=era5_delta_monthly.csv --cal=cells_all_cal.csv [--qa=0.5]]: daily winds drawn from the ERA5 06 UTC
+#        monthly climatology (2019-23) of the rice-season months (area-weighted planting day); soundings per day =
+#        qa x (1 - cloud cover) x cell area / pixel area (qa = fraction of cloud-free scenes passing retrieval QA)
 #   -> <prefix>_regional.csv, <prefix>_regional.png
 import sys, numpy as np, pandas as pd
 
@@ -42,7 +45,8 @@ REGIONS = {   # lon0, lon1, lat0, lat1 (same boxes as detect_ch4.py)
 }
 CUTS = {1: 0.134, 5: 0.322, 10: 0.443, 25: 0.603}
 ADOPT = [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-YCUT, AD_ROWS, AREA = [], [], {}
+YCUT, AD_ROWS, AREA, PLANT, MET = [], [], {}, {}, {}
+norm = lambda r: ''.join(ch for ch in r.lower() if ch.isalnum())
 
 def region_grid(c, box, g, margin):
     a0, a1, b0, b1 = box
@@ -70,6 +74,8 @@ def run_region(name, c, a):
     g, margin = a['grid'], a['margin']
     LO, LA, inbox, E = region_grid(c, REGIONS[name], g, margin)
     a0, a1, b0, b1 = REGIONS[name]
+    rb = c[c.lon.between(a0, a1) & c.lat.between(b0, b1)]
+    if len(rb) and 'plant' in rb: PLANT[name] = float(np.average(rb.plant.fillna(150), weights=rb.area_irr + rb.area_rf + 1e-9))
     AREA[name] = (c.area_irr + c.area_rf)[c.lon.between(a0, a1) & c.lat.between(b0, b1)].sum()/1e6
     if E[inbox].sum() <= 0: return []
     m = len(LO); sec = a['days']*86400.
@@ -86,8 +92,18 @@ def run_region(name, c, a):
     n = 2*m + nbk
     sa = np.concatenate([sa, np.full(nbk, a['sbias']**2)])
     rng = np.random.default_rng(a['seed']); F = np.zeros((n, n)); w = 1/so
+    met = MET.get(norm(name)) if MET else None
     for d in range(int(a['days'])):
-        K = jacobian(LO, LA, g, a['U']*np.exp(0.5*rng.standard_normal()), rng.uniform(0, 2*np.pi), a['spread'])
+        if met is None:
+            U, th = a['U']*np.exp(0.5*rng.standard_normal()), rng.uniform(0, 2*np.pi)
+        else:   # ERA5 06 UTC climatology for the season month: lognormal speed, von Mises direction
+            mo = met.loc[min(int(((PLANT[name] + d) % 365)/30.42), 11) + 1]
+            U = mo.ws_med*np.exp(np.log(mo.ws_p75/mo.ws_p25)/1.349*rng.standard_normal())
+            R = min(np.hypot(mo.u, mo.v)/mo.ws_med, 0.95)
+            kap = 2*R + R**3 + 5*R**5/6 if R < 0.53 else (-0.4 + 1.39*R + 0.43/(1 - R) if R < 0.85 else 1/(R**3 - 4*R**2 + 3*R))
+            th = rng.vonmises(np.arctan2(mo.v, mo.u), kap)
+            w = 1/(a['sigr']**2/np.maximum(a['qa']*(1 - mo.tcc)*area/a['pix'], 1e-6) + a['smod']**2)
+        K = jacobian(LO, LA, g, max(U, 0.5), th, a['spread'])
         K = np.hstack([K, K, B])                                             # rice and other share transport; bias
         K = K - (w @ K)/w.sum()                                              # project out the daily background offset
         F += (K*w[:, None]).T @ K
@@ -148,7 +164,7 @@ def main(cells_f, prefix):
              fclear=float(opt('fclear', 0.1)), days=float(opt('days', 113)), sa_rice=float(opt('sa_rice', 0.5)),
              sa_other=float(opt('sa_other', 0.5)), other=float(opt('other', 1)), spread=float(opt('spread', 0.25)),
              seed=int(opt('seed', 1)), sbias=float(opt('sbias', 2)), bblk=float(opt('bblk', 1)),
-             iav_rice=float(opt('iav_rice', 0.1)), iav_other=float(opt('iav_other', 0.15)), iav_pair=float(opt('iav_pair', 0.04)))
+             iav_rice=float(opt('iav_rice', 0.1)), iav_other=float(opt('iav_other', 0.15)), iav_pair=float(opt('iav_pair', 0.04)), qa=float(opt('qa', 0.5)))
     c = pd.read_csv(cells_f, usecols=['cell', 'lon', 'lat', 'area_irr', 'area_rf'])
     if opt('cells_dch4'):
         d = pd.read_csv(opt('cells_dch4')); c = c.merge(d, on='cell')
@@ -158,6 +174,12 @@ def main(cells_f, prefix):
     yc = pd.read_csv(opt('yearly', '/mnt/project-files/fair/v25fr_batch1/yearly_150.csv'))
     YCUT.extend((-yc.dch4_mt/yc.ctrl_ch4_mt).tolist())       # yearly fractional cut, years 1..25
     if opt('cells_dch4'): YCUT[:] = list(np.interp(np.arange(1, 26), list(CUTS), [CUTS[k] for k in CUTS]))
+    if opt('cal'):
+        cal = pd.read_csv(opt('cal'), usecols=['cell', 'plant_irr', 'plant_rf']); c = c.merge(cal, on='cell', how='left')
+        c['plant'] = np.where(c.area_irr >= c.area_rf, c.plant_irr, c.plant_rf)
+    if opt('era5'):
+        e = pd.read_csv(opt('era5'))
+        for r, g_ in e.groupby('region'): MET[norm(r)] = g_.set_index('m')
     names = opt('regions', ';'.join(REGIONS)).split(';')
     rows = []
     for n in names:
