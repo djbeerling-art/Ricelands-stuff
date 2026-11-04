@@ -18,18 +18,27 @@ LOGK_S = {'Ni': -0.6, **{m: round(8.1 + 0.90 * v, 2) for m, v in LOG_OHK1.items(
 DW = 2.7                                             # strong minus weak
 
 
-def add_clay(db):
-    """Add Clay_s / Clay_w masters and species to a thermo.Database."""
+# Measured 2SPNE constants for montmorillonite (strong, weak W1), ClaySor 2023 database
+# (Marinich et al. 2025, Appl. Geochem. 191:106510); Zn weak from the same table.
+CLAYSOR_MONT = {'Zn': (0.98, -2.36), 'Pb': (1.37, None), 'Co': (-0.18, None), 'Cd': (-1.03, None), 'Ni': (-0.81, None)}
+
+
+def add_clay(db, overrides=None):
+    """Add Clay_s / Clay_w masters and species to a thermo.Database.
+    overrides: {metal: (log K strong, log K weak or None -> strong - DW)} replacing the defaults."""
+    ks = {m: (k, k - DW) for m, k in LOGK_S.items()}
+    for m, (kst, kw) in (overrides or {}).items():
+        ks[m] = (kst, kst - DW if kw is None else kw)
     for s in SITES:
         oh = f'{s}OH'
         db.surf_masters[s] = oh
         db.surf_species[oh] = Reaction([(oh, 1.0)], [(oh, 1.0)], 0.0, defined=oh)
         db.surf_species[f'{s}OH2+'] = Reaction([(oh, 1.0), ('H+', 1.0)], [(f'{s}OH2+', 1.0)], 4.5, defined=f'{s}OH2+')
         db.surf_species[f'{s}O-'] = Reaction([(oh, 1.0)], [(f'{s}O-', 1.0), ('H+', 1.0)], -7.9, defined=f'{s}O-')
-        for m, k in LOGK_S.items():
+        for m, (kst, kw) in ks.items():
             sp = f'{s}O{m}+'
             db.surf_species[sp] = Reaction([(oh, 1.0), (f'{m}+2', 1.0)], [(sp, 1.0), ('H+', 1.0)],
-                                           k - (DW if s == 'Clay_w' else 0.0), defined=sp)
+                                           kw if s == 'Clay_w' else kst, defined=sp)
     return db
 
 
