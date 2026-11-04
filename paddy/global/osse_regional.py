@@ -24,6 +24,7 @@
 # Usage: python3 osse_regional.py <cells150.csv> <out prefix> [--grid=0.25] [--margin=1] [--U=4] [--sigr=12] [--smod=8]
 #        [--pix=38.5] [--fclear=0.1] [--days=113] [--sa_rice=0.5] [--sa_other=0.5] [--other=1] [--spread=0.25]
 #        [--regions=Mekong Delta;Bangladesh;...] [--seed=1] [--cells_dch4=...]
+#        [--delta_signal=delta_signal_v25fr.csv]: per-delta modelled control CH4 and yearly cut (100% treatment, 150 km)
 #        [--era5=era5_delta_monthly.csv --cal=cells_all_cal.csv [--qa=0.5]]: daily winds drawn from the ERA5 06 UTC
 #        monthly climatology (2019-23) of the rice-season months (area-weighted planting day); soundings per day =
 #        qa x (1 - cloud cover) x cell area / pixel area (qa = fraction of cloud-free scenes passing retrieval QA)
@@ -46,6 +47,7 @@ REGIONS = {   # lon0, lon1, lat0, lat1 (same boxes as detect_ch4.py)
 CUTS = {1: 0.134, 5: 0.322, 10: 0.443, 25: 0.603}
 ADOPT = [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 YCUT, AD_ROWS, AREA, PLANT, MET = [], [], {}, {}, {}
+DSIG = {}   # per-region modelled control (Mt CH4/yr) and yearly fractional cut, from --delta_signal
 norm = lambda r: ''.join(ch for ch in r.lower() if ch.isalnum())
 
 def region_grid(c, box, g, margin):
@@ -78,6 +80,10 @@ def run_region(name, c, a):
     if len(rb) and 'plant' in rb: PLANT[name] = float(np.average(rb.plant.fillna(150), weights=rb.area_irr + rb.area_rf + 1e-9))
     AREA[name] = (c.area_irr + c.area_rf)[c.lon.between(a0, a1) & c.lat.between(b0, b1)].sum()/1e6
     if E[inbox].sum() <= 0: return []
+    ds = DSIG.get(norm(name))
+    if ds is not None: E = E*ds['ctrl']*1e9/E[inbox].sum()                 # modelled control CH4 in the box
+    ycut = ds['cut'] if ds is not None else YCUT
+    cuts = {y: ycut[y - 1] for y in CUTS}
     m = len(LO); sec = a['days']*86400.
     rice = E/sec                                                             # kg/s during the season
     other = np.full(m, a['other']*rice[inbox].sum()/max(inbox.sum(), 1))    # uniform other sources, same mean density
@@ -123,7 +129,7 @@ def run_region(name, c, a):
         var_ba = 2*(sd_tot**2 + ((a['iav_rice']*ER0)**2 + (a['iav_other']*leak)**2)/ns)
         lw, le = hp @ A @ oth(west | (~inbox & (LO < np.median(LO[inbox])))), hp @ A @ oth(east | (~inbox & (LO >= np.median(LO[inbox]))))
         var_p = sd_pair**2 + (2*a['iav_pair']**2 + a['iav_other']**2*(lw**2 + le**2))/ns
-        for yr, f in CUTS.items():
+        for yr, f in cuts.items():
             out.append(dict(region=name, seasons=ns, year=yr, cut=f, rice_Mt_season=E[inbox].sum()/1e9,
                             dXmax_ppb=np.nan, prior_sd_pct=100*sd_pri/ER0, post_sd_pct=100*sd_tot/ER0,
                             leak_other_pct=100*leak/ER0,
@@ -150,12 +156,12 @@ def run_region(name, c, a):
             l1, l2 = hq @ A @ oth(T | near), hq @ A @ oth(Un | (~inbox & ~near))
             var_q = hq @ Sh @ hq + 2*a['iav_pair']**2 + a['iav_other']**2*(l1**2 + l2**2)
         else: var_q = np.inf
-        for yr, f in enumerate(YCUT, 1):
+        for yr, f in enumerate(ycut, 1):
             AD_ROWS.append(dict(region=name, adoption=ad, treated_Mha=E[T].sum()/E[inbox].sum()*AREA[name], year=yr, cut=f,
                                 z_before_after=f*ET/np.sqrt(var_ba), z_paired=f/np.sqrt(var_q)))
     # peak column signal of the full-adoption cut in year 10, mean wind from the west
     K = jacobian(LO, LA, g, a['U'], 0., a['spread'])
-    for o in out: o['dXmax_ppb'] = CUTS[o['year']]*np.abs(K @ rice).max()
+    for o in out: o['dXmax_ppb'] = cuts[o['year']]*np.abs(K @ rice).max()
     return out
 
 def main(cells_f, prefix):
@@ -180,6 +186,10 @@ def main(cells_f, prefix):
     if opt('era5'):
         e = pd.read_csv(opt('era5'))
         for r, g_ in e.groupby('region'): MET[norm(r)] = g_.set_index('m')
+    if opt('delta_signal'):
+        ds = pd.read_csv(opt('delta_signal')); yk = [int(k[1:]) for k in ds.columns if k[0] == 'd' and k[1:].isdigit()]
+        for _, r in ds.iterrows():
+            DSIG[norm(r.region)] = dict(ctrl=r.ctrl_ch4_mt_yr1, cut=list(np.interp(np.arange(1, 26), yk, [-r[f'd{k}']/r.ctrl_ch4_mt_yr1 for k in yk])))
     names = opt('regions', ';'.join(REGIONS)).split(';')
     rows = []
     for n in names:
