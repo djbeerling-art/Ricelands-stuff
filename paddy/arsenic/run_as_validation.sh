@@ -33,7 +33,8 @@ GTF=(2.5 0.58 0.083)   # goethite / ferrihydrite ratio for f ~0.5 / 0.8 / 0.9 (f
 set -u
 i=$1; NSET=${2:-5}; NCH=${3:-3}
 read -r lab irr f3 aso air alk scc dl <<< "${CL[$((i/3))]}"
-[ -n "${IRR:-}" ] && { irr=$IRR; lab=${lab}_si$IRR; }   # IRR (env, mM) overrides irrigation Si; separate output/status
+[ -n "${IRR:-}" ] && { irr=$IRR; lab=${lab}_si$IRR; }
+[ -n "${ASIRR:-}" ] && { air=$ASIRR; lab=${lab}_as$ASIRR; }   # ASIRR (env, ug/L) overrides irrigation As (irrigation-As sweep)   # IRR (env, mM) overrides irrigation Si; separate output/status
 k=$((i%3)); g=$(python3 -c "print(round($f3*${GTF[$k]},5))")
 DOSES=(${DOSES:-${dl//,/ }})
 tag=as_f${f3}_g${g}_a${alk}
