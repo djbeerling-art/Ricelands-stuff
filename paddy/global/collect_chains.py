@@ -7,14 +7,17 @@
 # Usage (repository root):
 #   python3 paddy/global/collect_chains.py <run dir = $SCEPTER_OUT/paddy> <archetypes.csv> <cell_map.csv> <cells.csv> <outdir>
 #       [--doses=10,20] [--years=10] [--tag=g22] [--alk=gross|pda (default pda)]
-#       [--tort=1.3] [--tslope=0.218] [--tconst=5.92]
+#       [--tort=1.3] [--tslope=0.218] [--tconst=5.92] [--tar=<dir of <arch>.tar.gz, default <run dir>/../paddy_tar>]
+# Archived runs (arch_pack.sbatch TARSYNC=1): an archetype with no run directories in <run dir> is read from its archive:
+#   only the season/fallow chain directories are extracted (tarfile) to a temporary directory under $TMPDIR (node-local
+#   disk in a batch job), processed, and deleted, so Lustre sees one large sequential read per archetype.
 # Transport penalty (David, 31 Oct 2026: report gross and net of transport): per cell, Lefebvre et al. 2019 (J Clean Prod
 #   233, 468; Table 4, truck): (tconst + tslope * tort * d) kg CO2e per t rock, d = the cell's straight-line distance (km)
 #   to the nearest basalt (cells.csv dist_basalt), road = tort x straight line; rock = dose x years t/ha.
 #   'trans' = that penalty (t CO2e/ha); 'net_tr' = net + trans (net of transport; 'net' stays gross of transport).
 # Writes <outdir>/arch_years.csv (per archetype, dose, year), arch_cum.csv (cumulative), cell_cum.csv, nation_cum.csv.
 # Per-ha values are t CO2e/ha (cumulative over the chain); totals multiply by harvested rice area (one season per year).
-import sys, os
+import sys, os, shutil, tarfile, tempfile
 import numpy as np, pandas as pd
 
 pos = [a for a in sys.argv[1:] if not a.startswith('--')]
@@ -29,9 +32,9 @@ K = lambda n: n*44/28*0.273                          # kg N2O-N/ha -> t CO2e/ha
 os.makedirs(OUT, exist_ok=True)
 
 yrs, cum = [], []
-for a in pd.read_csv(ARCH).itertuples():
+def collect_one(a, R):
     run = lambda d, y, x: f'{R}/flood_{TAG}_{a.arch}_{d}_y{y}{x}'
-    if not os.path.isdir(run(0, NY, 'f')): print('missing control', a.arch); continue
+    if not os.path.isdir(run(0, NY, 'f')): print('missing control', a.arch); return
     ctrl = {y: {x: season(run(0, y, x)) for x in 'sf'} for y in range(1, NY+1)}
     for d in doses:
         if not os.path.isdir(run(d, NY, 'f')): print('missing', a.arch, d); continue
@@ -53,6 +56,29 @@ for a in pd.read_csv(ARCH).itertuples():
         t['net'] = t['ch4s']+t['ch4f']+t['n2o']-t['alk']-t['cc']
         t['net_pot'] = t['ch4s']+t['ch4f']+t['n2o']-t['cat']
         cum.append(dict(arch=a.arch, dose=d, years=NY, **t))
+
+TARD = opt.get('tar', os.path.join(os.path.dirname(os.path.normpath(R)), 'paddy_tar'))
+def unpack(arch):
+    # extract the archetype's g22 chain directories from its archive; returns the temporary run dir or None
+    tf = os.path.join(TARD, f'{arch}.tar.gz')
+    if not os.path.isfile(tf): return None
+    tmp = tempfile.mkdtemp(prefix=f'cc_{arch}_', dir=os.environ.get('TMPDIR'))
+    pre = f'flood_{TAG}_{arch}_'
+    with tarfile.open(tf, 'r:gz') as t:
+        ms = [m for m in t if m.name.startswith(pre) and (m.isdir() or m.isfile()) and '..' not in m.name.split('/')]
+        try: t.extractall(tmp, members=ms, filter='data')
+        except TypeError: t.extractall(tmp, members=ms)       # Python < 3.11.4 (Stanage module 3.11.3) has no filter=
+    return tmp
+
+for a in pd.read_csv(ARCH).itertuples():
+    rd, tmp = R, None
+    if not os.path.isdir(f'{R}/flood_{TAG}_{a.arch}_0_y{NY}f'):
+        tmp = unpack(a.arch); rd = tmp or R
+    try:
+        collect_one(a, rd)
+    finally:
+        if tmp: shutil.rmtree(tmp, ignore_errors=True)
+
 pd.DataFrame(yrs).to_csv(os.path.join(OUT, 'arch_years.csv'), index=False)
 ag = pd.DataFrame(cum); ag.to_csv(os.path.join(OUT, 'arch_cum.csv'), index=False)
 if ag.empty: sys.exit('no complete archetypes')
