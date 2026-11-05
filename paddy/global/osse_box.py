@@ -12,6 +12,7 @@
 # 50% chance of a 2-sigma detection, and z >= z + 1.28 (90% chance).
 # Usage: python3 osse_box.py <yearly.csv: year, dch4_mt> <out prefix> [--y0=2026] [--end=2100] [--tau=9.1] [--rho=0.5]
 #        [--sobs=1] [--z=2] [--sgr=2,3,4] [--poly=-1,0,1,2] [--frac=0.5,1,2] [--scale=1]
+#   --signal=<FaIR *_dT.csv>: use FaIR's dCH4_ch4_ppb as the signal (noise model unchanged)
 #   --scale multiplies the dCH4 series (e.g. full-domain / modelled area); -> <prefix>_osse.csv, <prefix>_osse.png
 import sys, numpy as np, pandas as pd
 def opt(k, d):
@@ -51,6 +52,9 @@ def main(yf, prefix):
     s = pd.read_csv(yf); years = np.arange(y0, yend + 1); N = len(years); t = (years - y0)/10.
     dE = scale*np.interp(np.arange(1, N + 1), s.year, s.dch4_mt, right=s.dch4_mt.iloc[-1])
     tm = box(dE, tau)
+    if opt('signal', None):   # FaIR dCH4 concentration series (year, dCH4_ch4_ppb), replaces the one-box signal
+        fs = pd.read_csv(opt('signal', None)).set_index('year')['dCH4_ch4_ppb']
+        tm = scale*fs.reindex(years).values
     lab = {-1: 'known counterfactual', 0: 'unknown offset', 1: 'unknown linear trend', 2: 'unknown quadratic trend'}
     rows, curves = [], {}
     for sgr in sgrs:
