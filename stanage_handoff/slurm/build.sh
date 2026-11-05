@@ -5,7 +5,7 @@
 # into ~/SCEPTER is fine if both were compiled on the same node type.)
 # Modules come from modules.sh (shared with arch_array.sbatch).
 set -e
-[ -d $HOME/SCEPTER ] || git clone https://github.com/djbeerling-art/SCEPTER $HOME/SCEPTER
+[ -d $HOME/SCEPTER ] || git clone https://github.com/djbeerling-art/Ricelands-stuff $HOME/SCEPTER
 cd $HOME/SCEPTER && git fetch origin && git checkout claude/project-thread-lst1mi && git pull --ff-only   # = pip6bj-pan + global-run prep
 source stanage_handoff/slurm/modules.sh
 git show a8159b4:scepter.f90 > scepter.f90.v25

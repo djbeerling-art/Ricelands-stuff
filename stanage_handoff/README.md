@@ -42,7 +42,7 @@ with "Illegal instruction", rebuild with -march=x86-64-v3 instead of native)
 now sets `EXE=scepter_paddy_v23`; `slurm/build.sh` builds it. Recalibrate only if the GMD thread reports a material shift.
 The v22 notes below are kept for provenance.
 
-- Repository: github.com/djbeerling-art/SCEPTER, branch `claude/project-thread-lst1mi` (the global-run thread; = `claude/project-thread-pip6bj-pan` + archetypes_v22, pilot list, collect_chains.py; this package is in `stanage_handoff/`).
+- Repository: github.com/djbeerling-art/Ricelands-stuff, branch `claude/project-thread-lst1mi` (the global-run thread; = `claude/project-thread-pip6bj-pan` + archetypes_v22, pilot list, collect_chains.py; this package is in `stanage_handoff/`).
 - Executable: `scepter_paddy_v22` (source = commit 162913a, unchanged up to 6e71f12), built from `makefile_paddy`:
   `make --file=makefile_paddy PROGRAM=scepter_paddy_v22 OBJS=scepter_paddy_v22.o` (gfortran + OpenBLAS; see
   `slurm/build.sh`). Python: numpy, scipy, pandas, scikit-learn, SALib.
