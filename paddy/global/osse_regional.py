@@ -168,8 +168,12 @@ def run_region(name, c, a):
         T = np.zeros(m, bool); T[idx[:np.searchsorted(cr, ad - 1e-9) + 1]] = True
         Un = inbox & ~T
         v = rice*T
-        sb = sd_alpha(v, False)
-        sp = np.sqrt(sd_alpha(v, True)**2 + 2*2*a['iav_pair']**2) if (Un.any() and rice[Un].sum() > 0) else np.inf
+        part = Un.any() and rice[Un].sum() > 0
+        # before/after with part of the delta treated also learns from the untreated rice next door, so it carries the
+        # same block-to-block residual variability as the paired test (2 blocks x 2 seasons); at full adoption the
+        # treated block is the whole delta and only the regional anomaly prior (iav_rice) separates alpha from gamma.
+        sb = np.sqrt(sd_alpha(v, False)**2 + (2*2*a['iav_pair']**2 if part else 0.))
+        sp = np.sqrt(sd_alpha(v, True)**2 + 2*2*a['iav_pair']**2) if part else np.inf
         for yr, f in enumerate(ycut, 1):
             AD_ROWS.append(dict(region=name, adoption=ad, treated_Mha=E[T].sum()/E[inbox].sum()*AREA[name], year=yr, cut=f,
                                 z_before_after=f/sb, z_paired=f/sp, sd_alpha_ba=sb, sd_alpha_paired=sp))
