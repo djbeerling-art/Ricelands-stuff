@@ -39,13 +39,14 @@ PY
 # Node-local runs (LOCALRUN=1, the default): each archetype runs in its own directory on the node's local disk
 # ($TMPDIR), since ~600 concurrent runs writing many small files to Lustre made each run ~3x slower. Its existing run
 # directories are copied in from $SCEPTER_OUT (resume), and the (pruned) directories are copied back with rsync every
-# SYNCMIN minutes (default 60) and at the end; the status file is copied after the directories, so the status on scratch
+# SYNCMIN minutes (default 600: one safety copy ~10 h into a 12 h job) and at the end; the status file is copied after the directories, so the status on scratch
 # never lists a step whose directory is not there yet. A job killed at its time limit loses at most SYNCMIN minutes.
 # LOCALRUN=0 runs directly on $SCEPTER_OUT as before.
 # Archive copy-back (TARSYNC=1, the default; advice from Sheffield Research IT, 5 Nov 2026: Lustre handles many small
 # files badly): instead of rsyncing the directory trees, each sync streams ONE gzip'd tar of the archetype's directories
 # to $SCEPTER_OUT/paddy_tar/<arch>.tar.gz (written as .part, then renamed, so the archive on scratch is always complete).
-# Resume extracts that archive to local disk; collect_chains.py --tar reads it. SYNCMIN default is now 60 minutes.
+# Resume extracts that archive to local disk; collect_chains.py --tar reads it. SYNCMIN default is now 600 minutes (one safety copy per 12 h job, plus the copy at the end); a fresh
+# archetype (no status file) skips the scan of the shared run directory.
 # TARSYNC=0 restores the rsync behaviour. Existing directory outputs on scratch are still found for resume.
 sync_out() {   # <local SCEPTER_OUT> <arch> <status>: directories of this archetype only (others untouched)
     if [ "${TARSYNC:-1}" = 1 ]; then
@@ -65,13 +66,15 @@ attempt() {    # <arch> <args> <nudge> <status>
     L=${TMPDIR:-/tmp}/scl_${SLURM_JOB_ID:-$$}_$a; rm -rf $L; mkdir -p $L/paddy
     if [ "${TARSYNC:-1}" = 1 ] && [ -f $SCEPTER_OUT/paddy_tar/$a.tar.gz ]; then
         tar -xzf $SCEPTER_OUT/paddy_tar/$a.tar.gz -C $L/paddy
+    elif [ "${TARSYNC:-1}" = 1 ] && [ ! -s "$4" ]; then
+        :   # fresh archetype (no status yet): nothing to copy in, skip the scan of the shared directory
     else
         find $SCEPTER_OUT/paddy -maxdepth 1 \( -name "flood_*_$a" -o -name "flood_*_${a}_*" \) -exec cp -a -t $L/paddy/ {} +
     fi ||
         { echo "$a: copy to local disk failed, running on scratch" >> $STATUS_DIR/$a.log; rm -rf $L
           NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $4 >> $STATUS_DIR/$a.log 2>&1; return; }
     for x in .txt .args _spin.log _settle.txt _fe3y3.txt; do [ -f "${4%.txt}$x" ] && cp "${4%.txt}$x" $L/st$x; done
-    ( while sleep $(( ${SYNCMIN:-60}*60 )); do sync_out $L $a $4; done ) & local sp=$!
+    ( while sleep $(( ${SYNCMIN:-600}*60 )); do sync_out $L $a $4; done ) & local sp=$!
     SCEPTER_OUT=$L/ NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $L/st.txt >> $STATUS_DIR/$a.log 2>&1
     local rc=$?
     pkill -P $sp 2>/dev/null; kill $sp 2>/dev/null; wait $sp 2>/dev/null
