@@ -51,7 +51,7 @@ PY
 sync_out() {   # <local SCEPTER_OUT> <arch> <status>: directories of this archetype only (others untouched)
     if [ "${TARSYNC:-1}" = 1 ]; then
         local T=$SCEPTER_OUT/paddy_tar/$2.tar.gz; mkdir -p $SCEPTER_OUT/paddy_tar
-        ( cd $1/paddy && ls -d flood_*_$2 flood_*_$2_* 2>/dev/null | tar -czf $T.part -T - ) && mv -f $T.part $T || return 1
+        ( cd $1/paddy && ls -d flood_*_$2 flood_*_$2_* 2>/dev/null | tar -czf $T.part -T -; [ $? -le 1 ] ) && mv -f $T.part $T || return 1
         for x in .txt .args _spin.log _settle.txt _fe3y3.txt; do [ ! -f $1/st$x ] || cp $1/st$x "${3%.txt}$x" || return 1; done
         return 0
     fi
