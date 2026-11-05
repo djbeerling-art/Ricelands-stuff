@@ -65,7 +65,7 @@ Installation on Ubuntu:
 
 ```bash
 sudo apt-get install gfortran libopenblas-dev git python3-pip
-git clone https://github.com/djbeerling-art/SCEPTER.git
+git clone https://github.com/djbeerling-art/Ricelands-stuff.git
 cd SCEPTER
 git checkout claude/project-thread-pip6bj-pan     # or the archived release tag
 python3 -m pip install --user numpy scipy pandas matplotlib phreeqpython
