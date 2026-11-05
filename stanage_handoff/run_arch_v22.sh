@@ -18,6 +18,10 @@ kaq(){ [ -n "${KAQ_IRR:-}" ] || return 0; case " $args " in *" --awd "*) echo "-
 if [ -n "${BASE_OUT:-}" ]; then
   RS=${RESETTLE:-3}; b=$SCEPTER_OUT/paddy/flood_bs22_$a
   if ! ok st22_${a}_y${RS}f; then
+    # baseline state: a directory (older runs) or a member of the baseline's per-archetype archive $BASE_OUT/paddy_tar/<a>.tar.gz
+    if [ ! -d $b ] && [ ! -d $BASE_OUT/paddy/flood_st22_${a}_set ] && [ -f $BASE_OUT/paddy_tar/$a.tar.gz ]; then
+      tar -xzf $BASE_OUT/paddy_tar/$a.tar.gz -C $SCEPTER_OUT/paddy flood_st22_${a}_set && mv $SCEPTER_OUT/paddy/flood_st22_${a}_set $b
+    fi
     [ -d $b ] || cp -a $BASE_OUT/paddy/flood_st22_${a}_set $b || { echo "bs22_$a rc 97 (no baseline state)" >> "$ST"; exit 1; }
     CLIM_YOFF=-$RS paddy/multiyear/run_chain.sh st22_$a $RS 0 bs22_$a "$ST" $PROD $P21 $args $(kaq) || exit 1   # transient climate: re-settle under year 1
     rm -rf $b

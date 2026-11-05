@@ -39,10 +39,21 @@ PY
 # Node-local runs (LOCALRUN=1, the default): each archetype runs in its own directory on the node's local disk
 # ($TMPDIR), since ~600 concurrent runs writing many small files to Lustre made each run ~3x slower. Its existing run
 # directories are copied in from $SCEPTER_OUT (resume), and the (pruned) directories are copied back with rsync every
-# SYNCMIN minutes (default 20) and at the end; the status file is copied after the directories, so the status on scratch
+# SYNCMIN minutes (default 60) and at the end; the status file is copied after the directories, so the status on scratch
 # never lists a step whose directory is not there yet. A job killed at its time limit loses at most SYNCMIN minutes.
 # LOCALRUN=0 runs directly on $SCEPTER_OUT as before.
+# Archive copy-back (TARSYNC=1, the default; advice from Sheffield Research IT, 5 Nov 2026: Lustre handles many small
+# files badly): instead of rsyncing the directory trees, each sync streams ONE gzip'd tar of the archetype's directories
+# to $SCEPTER_OUT/paddy_tar/<arch>.tar.gz (written as .part, then renamed, so the archive on scratch is always complete).
+# Resume extracts that archive to local disk; collect_chains.py --tar reads it. SYNCMIN default is now 60 minutes.
+# TARSYNC=0 restores the rsync behaviour. Existing directory outputs on scratch are still found for resume.
 sync_out() {   # <local SCEPTER_OUT> <arch> <status>: directories of this archetype only (others untouched)
+    if [ "${TARSYNC:-1}" = 1 ]; then
+        local T=$SCEPTER_OUT/paddy_tar/$2.tar.gz; mkdir -p $SCEPTER_OUT/paddy_tar
+        ( cd $1/paddy && ls -d flood_*_$2 flood_*_$2_* 2>/dev/null | tar -czf $T.part -T - ) && mv -f $T.part $T || return 1
+        for x in .txt .args _spin.log _settle.txt _fe3y3.txt; do [ ! -f $1/st$x ] || cp $1/st$x "${3%.txt}$x" || return 1; done
+        return 0
+    fi
     rsync -a --delete --include="flood_*_$2/***" --include="flood_*_$2_*/***" --exclude='*' $1/paddy/ $SCEPTER_OUT/paddy/ || return 1
     for x in .txt .args _spin.log _settle.txt _fe3y3.txt; do [ ! -f $1/st$x ] || cp $1/st$x "${3%.txt}$x" || return 1; done
 }
@@ -52,11 +63,15 @@ attempt() {    # <arch> <args> <nudge> <status>
         NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $4 >> $STATUS_DIR/$a.log 2>&1; return
     fi
     L=${TMPDIR:-/tmp}/scl_${SLURM_JOB_ID:-$$}_$a; rm -rf $L; mkdir -p $L/paddy
-    find $SCEPTER_OUT/paddy -maxdepth 1 \( -name "flood_*_$a" -o -name "flood_*_${a}_*" \) -exec cp -a -t $L/paddy/ {} + ||
+    if [ "${TARSYNC:-1}" = 1 ] && [ -f $SCEPTER_OUT/paddy_tar/$a.tar.gz ]; then
+        tar -xzf $SCEPTER_OUT/paddy_tar/$a.tar.gz -C $L/paddy
+    else
+        find $SCEPTER_OUT/paddy -maxdepth 1 \( -name "flood_*_$a" -o -name "flood_*_${a}_*" \) -exec cp -a -t $L/paddy/ {} +
+    fi ||
         { echo "$a: copy to local disk failed, running on scratch" >> $STATUS_DIR/$a.log; rm -rf $L
           NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $4 >> $STATUS_DIR/$a.log 2>&1; return; }
     for x in .txt .args _spin.log _settle.txt _fe3y3.txt; do [ -f "${4%.txt}$x" ] && cp "${4%.txt}$x" $L/st$x; done
-    ( while sleep $(( ${SYNCMIN:-20}*60 )); do sync_out $L $a $4; done ) & local sp=$!
+    ( while sleep $(( ${SYNCMIN:-60}*60 )); do sync_out $L $a $4; done ) & local sp=$!
     SCEPTER_OUT=$L/ NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $L/st.txt >> $STATUS_DIR/$a.log 2>&1
     local rc=$?
     pkill -P $sp 2>/dev/null; kill $sp 2>/dev/null; wait $sp 2>/dev/null
@@ -79,6 +94,7 @@ run_one() {
         grep -q " rc 9[78]" "$ST" 2>/dev/null || break       # not the numerical failure (e.g. time limit): resume later
         d=$SCEPTER_OUT/failed/${a}_x$f; mkdir -p $d
         mv $SCEPTER_OUT/paddy/flood_*_${a}_* $SCEPTER_OUT/paddy/flood_gs22_$a $SCEPTER_OUT/paddy/flood_bs22_$a $d/ 2>/dev/null
+        mv $SCEPTER_OUT/paddy_tar/$a.tar.gz $d/ 2>/dev/null
         mv "$ST" "${ST%.txt}.args" "${ST%.txt}_spin.log" $d/ 2>/dev/null
         echo "$a failed at irralk x$f, retrying" >> $STATUS_DIR/$a.log
     done
