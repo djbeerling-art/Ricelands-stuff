@@ -26,7 +26,15 @@ export STATUS_DIR=${STATUS_DIR:-status} DOSES=${DOSES:-0 10 20} YEARS=${YEARS:-1
 mkdir -p $SCEPTER_OUT/paddy $STATUS_DIR
 P=${SLURM_CPUS_PER_TASK:-1}
 LIST=$STATUS_DIR/pack_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.list
-python3 - "$1" $(( (SLURM_ARRAY_TASK_ID-1)*P )) $P > $LIST <<'PY'
+# Work queue (QUEUE=1): instead of a fixed slice of PACK rows, every task walks the whole CSV and claims archetypes
+# one at a time (atomic mkdir in $STATUS_DIR/claim_<array job>/), so a core that finishes early picks up the next
+# unclaimed archetype instead of idling until the task's slowest run ends (fixed slices used ~69% of booked core time).
+# Submit fewer tasks than CSV rows / PACK, e.g. --array=1-25. New claims stop CLAIM_MIN minutes (default 240) into the
+# task, so a late claim still fits the 12 h limit; whatever is left unclaimed or unfinished resumes on resubmission
+# (claims are per array job, and finished archetypes are skipped by their status file).
+if [ "${QUEUE:-0}" = 1 ]; then QS=0; QN=1000000; else QS=$(( (SLURM_ARRAY_TASK_ID-1)*P )); QN=$P; fi
+export QUEUE=${QUEUE:-0} CLAIM_DIR=$STATUS_DIR/claim_${SLURM_ARRAY_JOB_ID:-$$} T0=$(date +%s); mkdir -p $CLAIM_DIR
+python3 - "$1" $QS $QN > $LIST <<'PY'
 import csv, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
 s, p = int(sys.argv[2]), int(sys.argv[3])
@@ -95,6 +103,10 @@ export -f sync_out attempt
 run_one() {
     IFS='|' read a args <<< "$1"
     local ST=$STATUS_DIR/$a.txt rc
+    if [ "$QUEUE" = 1 ]; then
+        [ $(( $(date +%s) - T0 )) -lt $(( ${CLAIM_MIN:-240}*60 )) ] || return 0   # too late in the task to start a new archetype
+        mkdir $CLAIM_DIR/$a 2>/dev/null || return 0                             # another task (or core) has it
+    fi
     # finished archetype (every dose chain at its last year): skip before any copy to local disk (a resubmit would
     # otherwise copy ~2.5 GB per finished archetype to the node and back, saturating scratch)
     local done=1; for d in $DOSES; do grep -q "^g22_${a}_${d}_y${YEARS}f rc 0" "$ST" 2>/dev/null || done=0; done
