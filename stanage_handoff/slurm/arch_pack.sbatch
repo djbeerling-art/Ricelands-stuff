@@ -72,7 +72,14 @@ attempt() {    # <arch> <args> <nudge> <status>
     elif [ "${TARSYNC:-1}" = 1 ] && [ ! -s "$4" ]; then
         :   # fresh archetype (no status yet): nothing to copy in, skip the scan of the shared directory
     else
-        find $SCEPTER_OUT/paddy -maxdepth 1 \( -name "flood_*_$a" -o -name "flood_*_${a}_*" \) -exec cp -a -t $L/paddy/ {} +
+        # old directory layout: list this archetype's run dirs from Lustre metadata only (lfs find, no per-file
+        # data-server lookups, as Research IT advised), then copy them in; plain find only where lfs is missing
+        if command -v lfs >/dev/null 2>&1; then
+            { lfs find $SCEPTER_OUT/paddy -maxdepth 1 -type d -name "flood_*_$a"
+              lfs find $SCEPTER_OUT/paddy -maxdepth 1 -type d -name "flood_*_${a}_*"; } | sort -u > $L/dirs.txt
+        else
+            find $SCEPTER_OUT/paddy -maxdepth 1 \( -name "flood_*_$a" -o -name "flood_*_${a}_*" \) > $L/dirs.txt
+        fi && { [ ! -s $L/dirs.txt ] || xargs -r -d '\n' cp -a -t $L/paddy/ < $L/dirs.txt; }
     fi ||
         { echo "$a: copy to local disk failed, running on scratch" >> $STATUS_DIR/$a.log; rm -rf $L
           NUDGE=$3 bash stanage_handoff/run_arch_v22.sh $a "$2" "$DOSES" $YEARS $4 >> $STATUS_DIR/$a.log 2>&1; return; }
