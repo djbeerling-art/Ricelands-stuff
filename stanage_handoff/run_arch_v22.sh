@@ -17,6 +17,13 @@ ok(){ grep -q "^$1 rc 0" "$ST" 2>/dev/null; }
 kaq(){ [ -n "${KAQ_IRR:-}" ] || return 0; case " $args " in *" --awd "*) echo "--kaq=$KAQ_RF";; *) echo "--kaq=$KAQ_IRR";; esac; }
 if [ -n "${BASE_OUT:-}" ]; then
   RS=${RESETTLE:-3}; b=$SCEPTER_OUT/paddy/flood_bs22_$a
+  # arch_pack retries a numerical failure (rc 97/98) with NUDGE = one irralk factor per attempt. The baseline path applies
+  # it in the spin-up loop below; future cases skip that loop, so apply the factor here, or every retry repeats the
+  # same irralk (seen for rf0401 in the SSP2-4.5 futures). A factor of 1 (first attempt) leaves args unchanged.
+  case "${NUDGE:-1}" in *" "*|1) ;; *)
+    args=$(python3 -c "import re,sys; s=sys.argv[1]; print(re.sub(r'--irralk=([0-9.]+)', lambda m: '--irralk=%.3f' % (float(m.group(1))*float(sys.argv[2])), s))" "$args" "$NUDGE")
+    echo "bs22_$a irralk x$NUDGE: $args" >> "${ST%.txt}_spin.log";;
+  esac
   if ! ok st22_${a}_y${RS}f; then
     # baseline state: a directory (older runs) or a member of the baseline's per-archetype archive $BASE_OUT/paddy_tar/<a>.tar.gz
     if [ ! -d $b ] && [ ! -d $BASE_OUT/paddy/flood_st22_${a}_set ] && [ -f $BASE_OUT/paddy_tar/$a.tar.gz ]; then
