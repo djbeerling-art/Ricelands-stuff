@@ -1,2 +1,4 @@
 # compiled paddy model executables
 scepter_paddy_*
+__pycache__/
+*.o
