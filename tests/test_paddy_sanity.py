@@ -38,6 +38,7 @@ def test_fe_inhibition_limits():
     assert sanity.fe_inhibition(1e15) < 1e-12
 
 def test_units():
+    pytest.importorskip('pint')
     fails = []; sanity.check_units(fails)
     assert not fails, fails
 

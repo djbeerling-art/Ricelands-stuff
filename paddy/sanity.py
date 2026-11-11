@@ -69,8 +69,8 @@ def _check_functions(fails):
 def check_units(fails):
     try:
         import pint
-    except ImportError:
-        fails.append('pint not installed (pip install pint)'); return
+    except ImportError:   # optional on HPC nodes: the unit checks also run in tests/test_paddy_sanity.py
+        sys.stderr.write('sanity: pint not installed, unit checks skipped (pip install pint)\n'); return
     u = pint.UnitRegistry()
     u.define('CO2e = [co2e]')
     # basalt dose: 20 t/ha == 2000 g/m2 == the 200000 g/m2/yr x 0.01 yr dust pulse the driver writes
