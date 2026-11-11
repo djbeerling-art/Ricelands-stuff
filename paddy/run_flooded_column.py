@@ -113,6 +113,16 @@ import os,sys,shutil
 sys.path.insert(0,os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import spinup
 
+# Sanity checks first (paddy/sanity.py, < 2 s): abort before writing or running anything if they fail.
+# Skipped inside the checks' own dry runs (SCEPTER_DRYRUN=1) and with SCEPTER_SANITY=0.
+if os.environ.get('SCEPTER_DRYRUN') != '1' and os.environ.get('SCEPTER_SANITY', '1') != '0':
+    sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+    import sanity
+    try:
+        sanity.run_sanity_checks()
+    except AssertionError as e:
+        sys.stderr.write(str(e) + '\n'); sys.exit(2)
+
 outdir = os.environ.get('SCEPTER_OUT','./scepter_output/')
 flags  = [a for a in sys.argv[1:] if a.startswith('--')]
 args   = [a for a in sys.argv[1:] if not a.startswith('--')]
@@ -341,3 +351,10 @@ spinup.run_a_scepter_run(
     # non-seasonal runs (fallow spin-ups) get no basalt
     sld_varlist_dust=list(bas_min.items()) if bas else [],zdust=float(opt.get('zmix','0.15')),
     )
+
+# Output check (paddy/sanity.check_run): the run reached t = end, no NaN/Inf, budgets close, first/last profiles
+# physical. Exit code 3 on failure so run_chain.sh / run_arch_v22.sh treat the step as failed.
+if os.environ.get('SCEPTER_DRYRUN') != '1' and os.environ.get('SCEPTER_SANITY', '1') != '0':
+    bad = sanity.check_run(rundir)
+    if bad:
+        sys.stderr.write('SCEPTER output check failed:\n  ' + '\n  '.join(bad[:20]) + '\n'); sys.exit(3)

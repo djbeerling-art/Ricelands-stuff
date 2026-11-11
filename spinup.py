@@ -213,6 +213,10 @@ def run_a_scepter_run(
             dust_temp = dust_temp,
             )
         
+    # SCEPTER_DRYRUN=1: write the input files only, without running the model (paddy/sanity.py)
+    if os.environ.get('SCEPTER_DRYRUN') == '1':
+        return
+
     # >>>> run 
     
     run_success = False
